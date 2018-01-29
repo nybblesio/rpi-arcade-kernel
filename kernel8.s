@@ -16,13 +16,13 @@ include     'lib/r_pi2.inc'
 ; constants
 ;
 ; -------------------------------------------------------------------------
-SCREEN_WIDTH            = 640
+SCREEN_WIDTH            = 512
 SCREEN_HEIGHT           = 480
 SCREEN_BITS_PER_PIXEL   = 8
 
 ; -------------------------------------------------------------------------
 ;
-; macros
+; macros & structures
 ;
 ; -------------------------------------------------------------------------
 macro bus_to_phys reg {
@@ -36,30 +36,17 @@ macro delay cycles {
         b.ne    .loop        
 }
 
-; -------------------------------------------------------------------------
-;
-; entry point
-;
-; -------------------------------------------------------------------------
-
-        org     $0000
-        b       multi_core_start
-
-; -------------------------------------------------------------------------
-;
-; structures, variables, and dragons -- oh my!
-;
-; -------------------------------------------------------------------------
 struc string text* {
         .       db  text
         .size   =   $ - .
 }
 
-struc font width*, height*, data* {
-        .width  dw  width
-        .height dw  height
-        .stride dw  SCREEN_WIDTH * width
-        .data   dw  data
+struc font width*, height*, ptr* {
+        .width:         dw      width
+        .height:        dw      height
+        .w_stride:      dw      SCREEN_WIDTH - width
+        .h_stride:      dw      (SCREEN_WIDTH * height) - width
+        .ptr:           dw      ptr
 }
 
 struc bus_cmd tag*, size, data1, data2 {
@@ -96,6 +83,20 @@ struc dma_control flags*, len, stride {
         .next   dw      0
 }
 
+; -------------------------------------------------------------------------
+;
+; entry point
+;
+; -------------------------------------------------------------------------
+
+        org     $0000
+        b       multi_core_start
+
+; -------------------------------------------------------------------------
+;
+; variables and dragons!
+;
+; -------------------------------------------------------------------------
 align 16
 frame_buffer_commands:
         dw                      frame_buffer_commands_end - frame_buffer_commands
@@ -105,7 +106,7 @@ frame_buffer_commands:
         virtual_buffer          bus_cmd Set_Virtual_Buffer,     8,   SCREEN_WIDTH, SCREEN_HEIGHT
         color_depth             bus_cmd Set_Depth,              4,   8
         virtual_offset          bus_cmd Set_Virtual_Offset,     8,   0,            0
-        palette                 bus_cmd Set_Palette,           16,   0,            64
+        palette                 bus_cmd Set_Palette,          264,   0,            64
         palette_data:        
                 ; palette 1
                 dw $2492ffff, $ff0000ff, $b60000ff, $ff0049ff 
@@ -131,21 +132,22 @@ frame_buffer_commands:
                 dw $b60000ff, $000000ff, $db6d24ff, $6d2400ff
                 dw $924900ff, $004900ff, $006d00ff, $ffffffff
 
-        frame_buffer            bus_cmd Allocate_Buffer,    8,   0,            0
+        frame_buffer            bus_cmd Allocate_Buffer,        8,   0,            0
 
         end_marker              bus_cmd 0
 frame_buffer_commands_end:
 
-align 32
+align 16
 tile_copy       dma_control     DMA_TDMODE + DMA_DEST_INC + DMA_DEST_WIDTH + DMA_SRC_INC + DMA_SRC_WIDTH
 
+align 8
 title           string          "Nybbles Arcade Kernel"
 
 align 8
-system_font_data:                                   
-        include 'font8x8.s'
+sys_font        font            8, 8, sys_font_ptr
 
-system_font     font            8, 8, system_font_data
+align 8
+sys_font_ptr:   include 'font8x8.s'
 
 ; -------------------------------------------------------------------------
 ;
@@ -168,8 +170,6 @@ main_core_start:
         mov         w1, DMA_EN0
         str         w1, [x0]
 
-; XXX: need to refactor this to check the mailbox status
-;
 frame_buffer_init:
         mov         w0, frame_buffer_commands + MAIL_TAGS
         mov         x1, MAIL_BASE
@@ -181,23 +181,34 @@ frame_buffer_init:
         adr         x1, frame_buffer.data1
         str         w0, [x1]
 
-        mov         w1, 256 + (SCREEN_WIDTH * 32)
+; ------------------------------
+;
+;
+; ------------------------------
+        mov         w1, SCREEN_WIDTH
+        mov         w2, 245
+        mov         w3, 168
+        mul         w1, w1, w2
+        add         w1, w1, w3
         add         w0, w0, w1
-        adr         x1, system_font_data
+
+        adr         x1, sys_font.ptr
         adr         x2, title        
         mov         w3, title.size
+        ldr         w10, [sys_font.w_stride]
+        ldr         w11, [sys_font.h_stride]
 draw_string:
-        mov         w4, 8
+        ldr         w4, [sys_font.height]
+        ldr         w12, [sys_font.width]
         ldrb        x5, [x2], 1
         add         x5, x1, x5, lsl 6
 draw_char:
         ldr         x6, [x5], 8
         str         x6, [x0], 8
-        add         x0, x0, SCREEN_WIDTH - 8
+        add         x0, x0, x10
         subs        w4, w4, 1
         b.ne        draw_char
-        mov         x4, (SCREEN_WIDTH * 8) - 8
-        sub         x0, x0, x4
+        sub         x0, x0, x11
         subs        w3, w3, 1
         b.ne        draw_string
 
