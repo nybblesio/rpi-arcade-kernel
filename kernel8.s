@@ -32,6 +32,10 @@ SCREEN_WIDTH            = 512
 SCREEN_HEIGHT           = 480
 SCREEN_BITS_PER_PIXEL   = 8
 
+SPRITE_WIDTH            = 32
+SPRITE_HEIGHT           = 32
+SPRITE_BYTES            = SPRITE_WIDTH * SPRITE_HEIGHT
+
 ; -------------------------------------------------------------------------
 ;
 ; macros & structures
@@ -127,37 +131,39 @@ struc dma_control flags*, len, stride {
 align 16
 frame_buffer_commands:
         dw                      frame_buffer_commands_end - frame_buffer_commands
-
         start_marker            bus_cmd 0
+
         physical_display        bus_cmd Set_Physical_Display,   8,   SCREEN_WIDTH, SCREEN_HEIGHT
         virtual_buffer          bus_cmd Set_Virtual_Buffer,     8,   SCREEN_WIDTH, SCREEN_HEIGHT
         color_depth             bus_cmd Set_Depth,              4,   8
         virtual_offset          bus_cmd Set_Virtual_Offset,     8,   0,            0
         palette                 bus_cmd Set_Palette,          264,   0,            64
+
         palette_data:        
+                ; N.B. palette format is ABGR!
                 ; palette 1
-                dw $2492ffff, $ff0000ff, $b60000ff, $ff0049ff 
-                dw $db9224ff, $00006dff, $6d6d49ff, $494924ff 
-                dw $00006dff, $000000ff, $db6d24ff, $6d2400ff 
-                dw $924900ff, $004900ff, $006d00ff, $ffffffff    
+                dw $00ff9224, $ff0000ff, $ff0000b6, $ff4900ff 
+                dw $ff2492db, $ff6d0000, $ff496d6d, $ff244949 
+                dw $ff6d0000, $ff000000, $ff246ddb, $ff00246d 
+                dw $ff004992, $ff004900, $ff006d00, $ffffffff    
 
                 ; palette 2
-                dw $6d4900ff, $922400ff, $db9200ff, $492400ff
-                dw $b66d00ff, $6d2400ff, $006d00ff, $0024b6ff 
-                dw $ffffffff, $000000ff, $2492ffff, $ff0000ff 
-                dw $6d6d6dff, $494949ff, $00006dff, $ffffffff
+                dw $0000496d, $ff002492, $ff0092db, $ff002449
+                dw $ff006db6, $ff00246d, $ff006d00, $ffb62400 
+                dw $ffffffff, $ff000000, $ffff9224, $ff0000ff 
+                dw $ff6d6d6d, $ff494949, $ff6d0000, $ffffffff
 
                 ; palette 3
-                dw $000000ff, $0092ffff, $00006dff, $ff0049ff
-                dw $922400ff, $494949ff, $6d6d49ff, $494924ff
-                dw $ffffffff, $000000ff, $db6d24ff, $6d2400ff
-                dw $924900ff, $004900ff, $006d00ff, $ffffffff
+                dw $00000000, $ffff9200, $ff6d0000, $ff4900ff
+                dw $ff002492, $ff494949, $ff496d6d, $ff244949
+                dw $ffffffff, $ff000000, $ff246ddb, $ff00246d
+                dw $ff004992, $ff004900, $ff006d00, $ffffffff
 
                 ; palette 4
-                dw $2492ffff, $ff0000ff, $db9200ff, $ff0049ff
-                dw $b64900ff, $6d2400ff, $6d6d49ff, $494949ff
-                dw $b60000ff, $000000ff, $db6d24ff, $6d2400ff
-                dw $924900ff, $004900ff, $006d00ff, $ffffffff
+                dw $00ff9224, $ff0000ff, $ff0092db, $ff4900ff
+                dw $ff0049b6, $ff00246d, $ff496d6d, $ff494949
+                dw $ff0000b6, $ff000000, $ff246ddb, $ff00246d
+                dw $ff004992, $ff004900, $ff006d00, $ffffffff
 
         frame_buffer            bus_cmd Allocate_Buffer,        8,   0,            0
 
@@ -179,17 +185,8 @@ sys_font        font            8, 8, sys_font_ptr
 align 8
 sys_font_ptr:   include         'font8x8.s'
 
-align 16
-timber_bg0:     file            'assets/timbg0.bin'
-timber_bg1:     file            'assets/timbg1.bin'
-timber_fg0:     file            'assets/timfg0.bin'
-timber_fg1:     file            'assets/timfg1.bin'
-timber_fg2:     file            'assets/timfg2.bin'
-timber_fg3:     file            'assets/timfg3.bin'
-timber_fg4:     file            'assets/timfg4.bin'
-timber_fg5:     file            'assets/timfg5.bin'
-timber_fg6:     file            'assets/timfg6.bin'
-timber_fg7:     file            'assets/timfg7.bin'
+align 8
+timber_fg:      file            'assets/timfg.bin'
 
 ; -------------------------------------------------------------------------
 ;
@@ -323,7 +320,7 @@ draw_string:
 draw_stamp:        
         ldp         x2, x3, [sp]
         ldp         x5, x4, [sp, #16]
-        mov         w1, 32 * 16
+        mov         w1, SPRITE_BYTES
         mul         w5, w5, w1
 
         adr         x1, frame_buffer.data1
@@ -333,26 +330,21 @@ draw_stamp:
         add         w1, w1, w3
         add         w0, w0, w1
 
-        adr         x1, timber_fg0
+        adr         x1, timber_fg
         add         x1, x1, x5
-        mov         w3, 32        
+        mov         w3, SPRITE_HEIGHT
 .raster:    
-        mov         x4, #1111b
-        ldr         x5, [x1], 8
-.mask1:        
-        and         x6, x5, x4
-        strb        x6, [x0], 1        
-        lsr         x5, x5, 4
-        cbnz        x5, draw_stamp.mask1
-
-        ldr         x5, [x1], 8
-.mask2:        
-        and         x6, x5, x4
-        strb        x6, [x0], 1        
-        lsr         x5, x5, 4
-        cbnz        x5, draw_stamp.mask2
-
-        add         x0, x0, SCREEN_WIDTH - 32
+        mov         w4, SPRITE_WIDTH
+.pixel:
+        ldrb        x5, [x1], 1
+        cbz         x5, draw_stamp.skip
+        ;add         x5, x5, 0  ; palette 1
+        strb        x5, [x0], 1        
+        b           draw_stamp.done
+.skip:  add         x0, x0, 1
+.done:  subs        w4, w4, 1
+        b.ne        draw_stamp.pixel
+        add         x0, x0, SCREEN_WIDTH - SPRITE_WIDTH
         subs        w3, w3, 1
         b.ne        draw_stamp.raster
         ret
