@@ -32,9 +32,15 @@ SCREEN_WIDTH            = 512
 SCREEN_HEIGHT           = 480
 SCREEN_BITS_PER_PIXEL   = 8
 
+TILE_WIDTH              = 16
+TILE_HEIGHT             = 16
+TILE_BYTES              = TILE_WIDTH * TILE_HEIGHT
+
 SPRITE_WIDTH            = 32
 SPRITE_HEIGHT           = 32
 SPRITE_BYTES            = SPRITE_WIDTH * SPRITE_HEIGHT
+
+PALETTE_SIZE            = 16
 
 ; -------------------------------------------------------------------------
 ;
@@ -52,27 +58,65 @@ macro delay cycles {
         b.ne    .loop        
 }
 
-macro text ypos, xpos, str, len {
-        sub     sp, sp, #32
+macro clear color {
+        mov     w2, color
+        bl      clear_screen        
+}
+
+macro text ypos, xpos, str, len, color {
+        sub     sp, sp, #48
         mov     w1, ypos
         mov     w2, xpos
         stp     x1, x2, [sp]
         adr     x1, str
         mov     x2, len
         stp     x1, x2, [sp, #16]
+        mov     x1, color
+        mov     x2, 0
+        stp     x1, x2, [sp, #32]        
         bl      draw_string
-        add     sp, sp, #32        
+        add     sp, sp, #48        
 }
 
-macro stamp ypos, xpos, tile {
+macro stamp ypos, xpos, tile, pal {
         sub     sp, sp, #32
         mov     w1, ypos
         mov     w2, xpos
         stp     x1, x2, [sp]
         mov     w3, tile
-        mov     w4, 0
+        mov     w4, pal
         stp     x3, x4, [sp, #16]
         bl      draw_stamp
+        add     sp, sp, #32
+}
+
+macro sprite number, ypos, xpos, tile, pal, flags {
+        adr     x0, sprite_control
+        mov     w1, 6 * 8
+        mov     w2, number
+        mul     x1, x1, x2
+        add     x0, x0, x1
+        mov     w1, tile
+        mov     w2, ypos
+        mov     w3, xpos
+        mov     w4, pal
+        mov     w5, flags
+        str     x1, [x0], 8
+        str     x2, [x0], 8
+        str     x3, [x0], 8
+        str     x4, [x0], 8
+        str     x5, [x0], 8
+}
+
+macro tile ypos, xpos, tile, pal {
+        sub     sp, sp, #32
+        mov     w1, ypos
+        mov     w2, xpos
+        stp     x1, x2, [sp]
+        mov     w3, tile
+        mov     w4, pal
+        stp     x3, x4, [sp, #16]
+        bl      draw_tile
         add     sp, sp, #32
 }
 
@@ -173,6 +217,31 @@ frame_buffer_commands_end:
 align 16
 tile_copy       dma_control     DMA_TDMODE + DMA_DEST_INC + DMA_DEST_WIDTH + DMA_SRC_INC + DMA_SRC_WIDTH
 
+align 16
+sprite_control:
+rept 128 {
+        dw      0       ; tile number
+        dw      0       ; y position
+        dw      0       ; x position
+        dw      0       ; palette # 0-3
+        dw      0       ; flags: hflip, vflip, rotate, etc....
+        dw      0       ; user data
+}
+
+align 16
+background_control:
+rept 32 * 30 {
+        dw      64      ; tile number
+        dw      0       ; palette # 0-3
+        dw      0       ; user data 1
+        dw      0       ; user data 2
+}
+
+align 16
+joy1:   dw      0
+joy2:   dw      0
+sound:  dw      256 dup(0)
+
 align 8
 title           string          "nybbles.io arcade kernel"
 
@@ -187,6 +256,9 @@ sys_font_ptr:   include         'font8x8.s'
 
 align 8
 timber_fg:      file            'assets/timfg.bin'
+
+align 8
+timber_bg:      file            'assets/timbg.bin'
 
 ; -------------------------------------------------------------------------
 ;
@@ -242,7 +314,7 @@ init_frame_buffer:
         str         w0, [x1]
         ret
 
-enable_dma:
+init_dma:
         mov         x0, PERIPHERAL_BASE
         orr         x0, x0, DMA_ENABLE
         mov         w1, DMA_EN0
@@ -276,6 +348,116 @@ init_uart:
 
 ; ------------------------------
 ;
+; draw_filled_rect
+;
+; stack frame:
+;       empty
+;
+; registers:
+;       w2 is the palette index to fill
+;       w3 is y
+;       w4 is x
+;       w5 is width
+;       w6 is height
+;             
+; ------------------------------
+draw_filled_rect:
+        adr         x1, frame_buffer.data1
+        ldr         w0, [x1]
+        mov         w6, SCREEN_WIDTH
+        mul         w0, w6, w3
+        add         w0, w0, w4
+.row:        
+        mov         w7, w5
+.pixel:
+        strb        x2, [x0], 1
+        subs        w7, w7, 1
+        b.ne        draw_filled_rect.pixel
+        add         w0, w0, SCREEN_WIDTH
+        sub         w0, w0, w5
+        subs        w6, w6, 1
+        b.ne        draw_filled_rect.row
+        ret
+
+; ------------------------------
+;
+; draw_hline
+;
+; stack frame:
+;       empty
+;
+; registers:
+;       w2 is the palette index to fill
+;       w3 is y
+;       w4 is x
+;       w5 is width
+;             
+; ------------------------------
+draw_hline:
+        adr         x1, frame_buffer.data1
+        ldr         w0, [x1]
+        mov         w6, SCREEN_WIDTH
+        mul         w0, w6, w3
+        add         w0, w0, w4        
+.pixel:
+        strb        x2, [x0], 1
+        subs        w5, w5, 1
+        b.ne        draw_hline.pixel
+        ret
+
+; ------------------------------
+;
+; draw_vline
+;
+; stack frame:
+;       empty
+;
+; registers:
+;       w2 is the palette index to fill
+;       w3 is y
+;       w4 is x
+;       w5 is height
+;             
+; ------------------------------
+draw_vline:
+        adr         x1, frame_buffer.data1
+        ldr         w0, [x1]
+        mov         w6, SCREEN_WIDTH
+        mul         w0, w6, w3
+        add         w0, w0, w4        
+.pixel:
+        strb        x2, [x0], 1
+        add         w0, w0, SCREEN_WIDTH - 1
+        subs        w5, w5, 1
+        b.ne        draw_vline.pixel
+        ret
+
+; ------------------------------
+;
+; clear_screen
+;
+; stack frame:
+;       empty
+;
+; registers:
+;       w2 is the palette 
+;          index to fill
+; ------------------------------
+clear_screen:
+        adr         x1, frame_buffer.data1
+        ldr         w0, [x1]
+        mov         w3, SCREEN_WIDTH
+        mov         w4, SCREEN_HEIGHT
+        mul         w3, w3, w4
+        lsr         w3, w3, 3
+.pixel:
+        str         x2, [x0], 8
+        subs        w3, w3, 1
+        b.ne        clear_screen.pixel
+        ret
+
+; ------------------------------
+;
 ; draw_string
 ;
 ; stack frame: 16 bytes
@@ -297,17 +479,24 @@ draw_string:
         ldp         x2, x3, [sp, #16]
         ldr         w10, [sys_font.w_stride]
         ldr         w11, [sys_font.h_stride]
+        ldp         x13, x14, [sp, #32]
 .raster:     
         ldr         w4, [sys_font.height]
-        ldr         w12, [sys_font.width]
         ldrb        x5, [x2], 1
         add         x5, x1, x5, lsl 6
-.pixel:     
-        ldr         x6, [x5], 8
-        str         x6, [x0], 8
+.row:
+        ldr         w12, [sys_font.width]
+.pixel:
+        ldrb        x6, [x5], 1
+        cbz         x6, draw_string.skip
+        strb        w13, [x0], 1
+        b           draw_string.done
+.skip:  add         x0, x0, 1
+.done:  subs        w12, w12, 1
+        b.ne        draw_string.pixel        
         add         x0, x0, x10
         subs        w4, w4, 1
-        b.ne        draw_string.pixel
+        b.ne        draw_string.row
         sub         x0, x0, x11
         subs        w3, w3, 1
         b.ne        draw_string.raster
@@ -315,6 +504,58 @@ draw_string:
 
 ; ------------------------------
 ;
+; draw background tile
+;
+; stack:
+;       ypos
+;       xpos
+;       tile
+;       palette
+;
+; ------------------------------
+draw_tile:        
+        ldp         x2, x3, [sp]
+        ldp         x5, x4, [sp, #16]
+        mov         w1, TILE_BYTES
+        mul         w5, w5, w1
+        mov         w1, PALETTE_SIZE
+        mul         w6, w4, w1
+
+        adr         x1, frame_buffer.data1
+        ldr         w0, [x1]
+        mov         w1, SCREEN_WIDTH
+        mul         w1, w1, w2
+        add         w1, w1, w3
+        add         w0, w0, w1
+
+        adr         x1, timber_bg
+        add         x1, x1, x5
+        mov         w3, TILE_HEIGHT
+.raster:    
+        mov         w4, TILE_WIDTH
+.pixel:
+        ldrb        x5, [x1], 1
+        cbz         x5, draw_tile.skip
+        add         x5, x5, x6
+        strb        x5, [x0], 1
+        b           draw_tile.done
+.skip:  add         x0, x0, 1
+.done:  subs        w4, w4, 1
+        b.ne        draw_tile.pixel
+        add         x0, x0, SCREEN_WIDTH - TILE_WIDTH
+        subs        w3, w3, 1
+        b.ne        draw_tile.raster
+        ret
+
+; ------------------------------
+;
+; draw sprite stamp
+;
+; stack:
+;       ypos
+;       xpos
+;       tile
+;       palette
 ;
 ; ------------------------------
 draw_stamp:        
@@ -322,6 +563,8 @@ draw_stamp:
         ldp         x5, x4, [sp, #16]
         mov         w1, SPRITE_BYTES
         mul         w5, w5, w1
+        mov         w1, PALETTE_SIZE
+        mul         w6, w4, w1
 
         adr         x1, frame_buffer.data1
         ldr         w0, [x1]
@@ -338,8 +581,8 @@ draw_stamp:
 .pixel:
         ldrb        x5, [x1], 1
         cbz         x5, draw_stamp.skip
-        ;add         x5, x5, 0  ; palette 1
-        strb        x5, [x0], 1        
+        add         x5, x5, x6
+        strb        x5, [x0], 1
         b           draw_stamp.done
 .skip:  add         x0, x0, 1
 .done:  subs        w4, w4, 1
@@ -349,35 +592,63 @@ draw_stamp:
         b.ne        draw_stamp.raster
         ret
 
+; Set fake_vsync_isr=1 in config.txt and I will trigger the SMI interrupt (48) from my vsync callback.
+; In your ISR, you should write 0 to SMICS (0x7E600000/0x20600000) to clear it.
 ; ------------------------------
 ;
 ; engine state machine
 ;
 ; ------------------------------
 engine:
-        bl          enable_dma
+        bl          init_dma
         bl          init_uart
         bl          init_frame_buffer
-       
-        text        8,  8, title,  title.size
-        text        17, 8, status, status.size
 
-stamps:
-        mov         w10, 0
-        mov         w11, 25
-        mov         w12, 8
-        mov         w13, 14
-.row:
-        mov         w14, 14
-.across:
-        stamp       w11, w12, w10
-        add         w12, w12, 34
-        add         w10, w10, 1
+        sprite      0, 32, 32, 1, 0, 0  
+        sprite      1, 64, 32, 2, 0, 0
+
+; main loop code for game engine
+;       
+.loop:
+        ;clear       0
+
+        ; background render loop
+        adr         x10, background_control        
+        mov         w11, 30
+        mov         w12, 0              ; y
+        mov         w13, 0              ; x 
+.bg_row:        
+        mov         w14, 32
+.bg_tile:
+        ldr         x15, [x10], 8               ; tile number
+        ldr         x16, [x10], 8               ; palette
+        ;add         x10, x10, 16                ; skip over user data
+        tile        w12, w13, w15, w16
+        add         w13, w13, TILE_WIDTH
         subs        w14, w14, 1
-        b.ne        stamps.across
-        add         w11, w11, 34
-        mov         w12, 8        
-        subs        w13, w13, 1
-        b.ne        stamps.row                
+        b.ne        engine.bg_tile
+        mov         w13, 0
+        add         w12, w12, TILE_HEIGHT
+        subs        w11, w11, 1
+        b.ne        engine.bg_row
 
-        b           hang
+        ; sprite render loop
+        adr         x10, sprite_control
+        mov         w11, 128
+.sprite_tile:
+        ldr         x12, [x10], 8               ; tile number
+        cbz         x12, engine.sprite_skip
+        ldr         x13, [x10], 8               ; y position
+        ldr         x14, [x10], 8               ; x position
+        ldr         x15, [x10], 8               ; palette number
+        ldr         x16, [x10], 8               ; flags
+        ;add         x10, x10, 8                 ; skip user data
+        stamp       w13, w14, w12, w15
+.sprite_skip:        
+        subs        w11, w11, 1
+        b.ne        engine.sprite_tile
+
+        b           engine.loop
+
+vsync_isr:
+        eret
