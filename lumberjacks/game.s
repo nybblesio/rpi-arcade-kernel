@@ -33,6 +33,7 @@ include     'constants.s'
 include     'macros.s'
 include     'mailbox.s'
 include     'dma.s'
+include     'font.s'
 include     'video.s'
 
 ; =========================================================
@@ -43,6 +44,7 @@ include     'video.s'
 org $8000
 initialize_vector:  dw  game_init
 tick_vector:        dw  game_tick
+
 
 ; =========================================================
 ;
@@ -88,6 +90,18 @@ draw_tile:
         subs    w3, w3, 1
         b.ne    draw_tile.raster
         ret
+
+macro tile ypos, xpos, tile, pal {
+        sub     sp, sp, #32
+        mov     w1, ypos
+        mov     w2, xpos
+        stp     x1, x2, [sp]
+        mov     w3, tile
+        mov     w4, pal
+        stp     x3, x4, [sp, #16]
+        bl      draw_tile
+        add     sp, sp, #32
+}
 
 ; =========================================================
 ;
@@ -140,6 +154,36 @@ draw_stamp:
         subs    w3, w3, 1
         b.ne    draw_stamp.raster
         ret
+
+macro stamp ypos, xpos, tile, pal {
+        sub     sp, sp, #32
+        mov     w1, ypos
+        mov     w2, xpos
+        stp     x1, x2, [sp]
+        mov     w3, tile
+        mov     w4, pal
+        stp     x3, x4, [sp, #16]
+        bl      draw_stamp
+        add     sp, sp, #32
+}
+
+macro sprite number, ypos, xpos, tile, pal, flags {
+        adr     x0, sprite_control
+        mov     w1, 6 * 4
+        mov     w2, number
+        mul     x1, x1, x2
+        add     x0, x0, x1
+        mov     w1, tile
+        mov     w2, ypos
+        mov     w3, xpos
+        mov     w4, pal
+        mov     w5, flags
+        str     w1, [x0], 4
+        str     w2, [x0], 4
+        str     w3, [x0], 4
+        str     w4, [x0], 4
+        str     w5, [x0], 4
+}
 
 ; =========================================================
 ;
@@ -208,7 +252,6 @@ game_tick:
 
         ret
 
-
 ; =========================================================
 ;
 ; Data Section
@@ -249,3 +292,4 @@ timber_fg:
 align 8
 timber_bg:
         file    'assets/timbg.bin'
+

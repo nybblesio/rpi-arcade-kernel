@@ -1,15 +1,12 @@
-.PHONY: all clean kernel lumberjacks
+.PHONY: all clean
 
-all: kernel lumberjacks
+all: kernel8.img game.img
 clean:
-	rm -f *.img
+	rm kernel/kernel8.img
+	rm lumberjacks/game.img
 
 kernel8.img: kernel/kernel8.s
 	fasmarm $<
 
-lumberjacks.img: lumberjacks/game.s
+game.img: lumberjacks/game.s
 	fasmarm $<
-
-kernel: kernel8.img
-
-lumberjacks: lumberjacks.img

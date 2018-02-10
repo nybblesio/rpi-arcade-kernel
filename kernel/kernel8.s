@@ -30,10 +30,12 @@ format      binary as 'img'
 
 include     'constants.s'
 include     'macros.s'
+include     'timer.s'
 include     'dma.s'
 include     'mailbox.s'
 include     'uart.s'
 include     'joy.s'
+include     'font.s'
 include     'video.s'
 
 ; =========================================================
@@ -62,7 +64,7 @@ start:
         cbz     x1, core_two
         sub     x1, x0, #3
         cbz     x1, core_three        
-.hang:  b       start.hang
+.hang:  b       .hang
 
 ; =========================================================
 ;
@@ -110,19 +112,14 @@ kernel_core:
         bl      dma_init
         bl      uart_init
         bl      video_init
+        bl      timer_init
         bl      joy_init
 
-        ldr     w0, game_init_vector
-        cbz     w0, kernel_core.no_game_init
-        blr     x0
-.no_game_init:
-
 .loop:
-        ldr     w0, game_tick_vector
-        cbz     w0, kernel_core.no_game_tick
-        blr     x0
-.no_game_tick:        
-        b       kernel_core.loop
+        lbb
+
+        bl      page_swap
+        b       .loop
 
 ; =========================================================
 ;
@@ -138,7 +135,7 @@ kernel_core:
 watchdog_core:
         mov     sp, kernel_stack
         add     sp, sp, $30000
-.loop:  b       watchdog_core.loop
+.loop:  b       .loop
 
 ; =========================================================
 ;
@@ -154,7 +151,7 @@ watchdog_core:
 core_two:
         mov     sp, kernel_stack
         add     sp, sp, $20000
-.loop:  b       core_two.loop
+.loop:  b       .loop
 
 ; =========================================================
 ;
@@ -170,13 +167,31 @@ core_two:
 core_three:
         mov     sp, kernel_stack
         add     sp, sp, $10000
-.loop:  b       core_three.loop
+.loop:  b       .loop
 
 ; =========================================================
 ;
 ; Data Section
 ;
 ; =========================================================
+
+CHARS_PER_LINE = SCREEN_WIDTH / 8
+LINES_PER_PAGE = SCREEN_HEIGHT / 8
+
+console_buffer:
+        db  (LINES_PER_PAGE * CHARS_PER_LINE) * 2 dup (0, 4);
+
+column  db  0
+row     db  0
+
+struc caret_t {
+        .y      db  0
+        .x      db  0
+        .color  db  $f
+        .show   db  0
+}
+
+caret   caret_t
 
 ; =========================================================
 ;
