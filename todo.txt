@@ -15,6 +15,8 @@ Tasks
 -----
 
 - UBER IMPORTANT: implement 64-bit exception table vectors for IRQ & FIRQ at a minimum
+    ; Set fake_vsync_isr=1 in config.txt and I will trigger the SMI interrupt (48) from my vsync callback.
+    ; In your ISR, you should write 0 to SMICS (0x7E600000/0x20600000) to clear it.
 
 - create palette control "ram"
     1. almost done?
