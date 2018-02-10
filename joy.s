@@ -3,6 +3,8 @@
 ; Aracde Kernel Kit
 ; AArch64 Assembly Language
 ;
+; Lumberjacks
+;
 ; About:
 ;
 ;
@@ -26,13 +28,15 @@
 
 ; =========================================================
 ;
-; Macros
+; joy_init
+;
+; stack:
+;   (none)
+;
+; registers:
+;   (none)
 ;
 ; =========================================================
-macro delay cycles {
-        local   .loop
-        mov     w12, cycles
-.loop:  subs    w12, w12, 1
-        b.ne    .loop        
-}
+joy_init:
+        ret
 

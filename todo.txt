@@ -4,27 +4,28 @@ TODO LIST
 Admin
 ------
 
+- need a nice name for this project
+- project website
+- write up a really good README.md
 
 Questions & Ponderings
 ----------------------
 
-- how to set custom interrupt isr arm64?
-- best way to get vsync
 
 Tasks
 -----
 
+- uart_init function
+
+- uart_getc function
+
+- uart_putc function
+
+- uart_putstr function
+
 - UBER IMPORTANT: implement 64-bit exception table vectors for IRQ & FIRQ at a minimum
     ; Set fake_vsync_isr=1 in config.txt and I will trigger the SMI interrupt (48) from my vsync callback.
     ; In your ISR, you should write 0 to SMICS (0x7E600000/0x20600000) to clear it.
-
-- create palette control "ram"
-    1. almost done?
-
-- create an "I/O" area in ram
-    - joy1  dw
-    - joy2  dw
-    - sound control RAM 256 bytes ---> core1 processor loop
 
 KERNEL
 ------
@@ -85,3 +86,10 @@ DONE
         - dw flags
         - dw userpointer
 - create background control "ram"
+- create an "I/O" area in ram
+    - joy1  dw
+    - joy2  dw
+    - sound control RAM 256 bytes ---> core1 processor loop
+- create palette control "ram"
+    1. almost done?
+
