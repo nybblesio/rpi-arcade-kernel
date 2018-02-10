@@ -30,7 +30,6 @@ format      binary as 'img'
 
 include     'constants.s'
 include     'macros.s'
-include     'rpi2.s'
 
 ; =========================================================
 ;

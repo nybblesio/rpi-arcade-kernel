@@ -10,8 +10,9 @@
 code64
 processor   cpu64_v8
 format      binary as 'img'
-include     'lib/macros.inc'
-include     'lib/r_pi2.inc'
+
+include     'constants.s'
+include     'macros.'
 
 ; -------------------------------------------------------------------------
 ;
