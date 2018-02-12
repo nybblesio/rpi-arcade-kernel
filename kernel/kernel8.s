@@ -28,8 +28,13 @@ code64
 processor   cpu64_v8
 format      binary as 'img'
 
+org     $0000
+
+        b   start
+
 include     'constants.s'
 include     'macros.s'
+include     'pool.s'
 include     'timer.s'
 include     'dma.s'
 include     'mailbox.s'
@@ -49,10 +54,6 @@ include     'video.s'
 ;   (none)
 ;
 ; =========================================================
-
-align   16
-org     $0000
-
 start:
         mrs     x0, MPIDR_EL1
         mov     x1, #$ff000000
@@ -110,15 +111,31 @@ kernel_core:
         add     sp, sp, $40000
 
         bl      dma_init
-        bl      uart_init
-        bl      video_init
         bl      timer_init
         bl      joy_init
+        bl      uart_init
+        bl      video_init
+
+        mov     w1, 'A'
+        bl      uart_send
+        mov     w1, 'K'
+        bl      uart_send
+        mov     w1, 'K'
+        bl      uart_send
+        mov     w1, $0d
+        bl      uart_send
+        mov     w1, $0a
+        bl      uart_send
 
 .loop:
-        lbb
+        ; handle the serial interface 
+        bl      uart_recv
+        bl      uart_send
 
+        lbb
+        ; graphics related stuff goes here
         bl      page_swap
+
         b       .loop
 
 ; =========================================================
@@ -179,10 +196,13 @@ CHARS_PER_LINE = SCREEN_WIDTH / 8
 LINES_PER_PAGE = SCREEN_HEIGHT / 8
 
 console_buffer:
-        db  (LINES_PER_PAGE * CHARS_PER_LINE) * 2 dup (0, 4);
-
+        db  (LINES_PER_PAGE * CHARS_PER_LINE) * 2 dup (0, 4)
 column  db  0
 row     db  0
+
+line_buffer:
+        db CHARS_PER_LINE dup (0)
+lb_offs db  0
 
 struc caret_t {
         .y      db  0
@@ -195,9 +215,12 @@ caret   caret_t
 
 ; =========================================================
 ;
-; Game Section
+; Game Interface Section
 ;
 ; =========================================================
+
+include 'game_abi.s'
+
 org $8000
 
 game_init_vector    dw  0
@@ -215,7 +238,7 @@ game_tick_vector    dw  0
 ; block of RAM.
 ;
 ; =========================================================
-org $10000000       ; 256MB
+org $ffc0000
 
 kernel_stack:
         db  $40000 dup(0)

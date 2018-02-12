@@ -41,10 +41,11 @@ include     'video.s'
 ; Game Entry Point
 ;
 ; =========================================================
+include 'game_abi.s'
+
 org $8000
 initialize_vector:  dw  game_init
 tick_vector:        dw  game_tick
-
 
 ; =========================================================
 ;
