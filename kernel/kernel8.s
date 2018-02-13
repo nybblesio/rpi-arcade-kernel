@@ -131,11 +131,37 @@ kernel_core:
         ; handle the serial interface 
         bl      uart_recv
         bl      uart_send
+        bl      joy_read
 
+        ;
+        ; registers w10-w19 are generally free/safe to use
+        ;
         lbb
-        ; graphics related stuff goes here
-        bl      page_swap
+        
+        adr     x10, console_buffer
+        mov     w1, 0               ; y position
+        mov     w2, 0               ; x position
+        mov     w16, LINES_PER_PAGE 
+.row:   adr     x3, line_buffer
+        adr     x5, nitram_micro_font
+        mov     w4, 0
+        mov     w15, 0              ; last color
+        mov     w11, CHARS_PER_LINE
+.char:  ldrb    w13, [x10], 1       ; character
+        ldrb    w14, [x10], 1       ; color
+        cmp     w14, w15
+        b.ne    .span
+.span:  mov     w15, w14
+        bl      draw_string
+        adr     x3, line_buffer
+        mov     w4, 0
+        subs    w11, w11, 1
+        b.ne    .char
+        add     w1, w1, FONT_HEIGHT + 1
+        subs    w16, w16, 1
+        b.ne    .loop
 
+        bl      page_swap
         b       .loop
 
 ; =========================================================
@@ -195,11 +221,13 @@ core_three:
 CHARS_PER_LINE = SCREEN_WIDTH / 8
 LINES_PER_PAGE = SCREEN_HEIGHT / 8
 
+align 8
 console_buffer:
         db  (LINES_PER_PAGE * CHARS_PER_LINE) * 2 dup (0, 4)
 column  db  0
 row     db  0
 
+align 8
 line_buffer:
         db CHARS_PER_LINE dup (0)
 lb_offs db  0
