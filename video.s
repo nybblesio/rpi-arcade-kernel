@@ -126,12 +126,16 @@ page_bytes  dw  SCREEN_WIDTH * SCREEN_HEIGHT
 ;
 ; =========================================================
 video_init:
-        mov     w0, frame_buffer_commands
+        sub     sp, sp, #16
+        stp     x0, x30, [sp]
+        adr     x0, frame_buffer_commands
         bl      write_mailbox
         ldr     w0, [frame_buffer.data1]
         b2p     w0
         adr     x1, frame_buffer.data1
         str     w0, [x1]
+        ldp     x0, x30, [sp]
+        add     sp, sp, #16
         ret
 
 ; =========================================================
@@ -146,6 +150,8 @@ video_init:
 ;             
 ; =========================================================
 page_swap:
+        sub     sp, sp, #16
+        stp     x0, x30, [sp]
         adr     x2, page
         adr     x3, virtual_offset.data2
         ldr     w1, [x2]
@@ -163,6 +169,8 @@ page_swap:
 .set_offset:
         mov     w0, set_virtual_offset_commands        
         bl      write_mailbox
+        ldp     x0, x30, [sp]
+        add     sp, sp, #16
         ret
 
 ; =========================================================

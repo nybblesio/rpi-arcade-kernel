@@ -28,7 +28,7 @@
 
 ; =========================================================
 ;
-; uart_lcr
+; uart_status
 ;
 ; stack:
 ;   (none)
@@ -38,8 +38,9 @@
 ;   w1 status value
 ;
 ; =========================================================
-uart_lcr:
-        ldr     w0, [aux_base]
+uart_status:
+        adr     x0, aux_base
+        ldr     w0, [x0]
         ldr     w1, [x0, AUX_MU_LSR_REG]
         ret
 
@@ -53,14 +54,18 @@ uart_lcr:
 ; registers:
 ;   w0 scratch register
 ;   w1 character received
+;   w2 scratch register
 ;
 ; =========================================================
 uart_recv:
-        ldr     w0, [aux_base]
-.loop:  ldr     w1, [x0, AUX_MU_LSR_REG]
-        ands    w1, w1, $01
-        b.eq    .loop
-        ldr     w1, [x0, AUX_MU_IO_REG]
+        adr     x0, aux_base
+        ldr     w0, [x0]
+        ldr     w2, [x0, AUX_MU_LSR_REG]
+        ands    w2, w2, $01
+        b.ne    .ready
+        mov     w1, 0
+        ret
+.ready: ldr     w1, [x0, AUX_MU_IO_REG]
         and     w1, w1, $ff
         ret
 
@@ -74,14 +79,17 @@ uart_recv:
 ; registers:
 ;   w0 scratch register
 ;   w1 character to send
+;   w2 scratch register
 ;
 ; =========================================================
 uart_send:
-        ldr     w0, [aux_base]
-.loop:  ldr     w1, [x0, AUX_MU_LSR_REG]
-        ands    w1, w1, $20
-        b.eq    .loop
-        str     w1, [x0, AUX_MU_IO_REG]
+        adr     x0, aux_base
+        ldr     w0, [x0]
+        ldr     w2, [x0, AUX_MU_LSR_REG]
+        ands    w2, w2, $20
+        b.ne    .ready
+        ret
+.ready: str     w1, [x0, AUX_MU_IO_REG]
         ret
 
 ; =========================================================
@@ -96,10 +104,11 @@ uart_send:
 ;
 ; =========================================================
 uart_flush:
-        ldr     w0, [aux_base]
+        adr     x0, aux_base
+        ldr     w0, [x0]
 .loop:  ldr     w1, [x0, AUX_MU_LSR_REG]
-        ands    w1, w1, $100
-        b.ne    .loop
+        tst     w1, $100
+        b.eq    .loop
         ret
 
 ; =========================================================
@@ -115,7 +124,8 @@ uart_flush:
 ;
 ; =========================================================
 uart_check:
-        ldr     w0, [aux_base]
+        adr     x0, aux_base
+        ldr     w0, [x0]
         ldr     w1, [x0, AUX_MU_LSR_REG]
         ands    w1, w1, $01
         ret
@@ -132,7 +142,8 @@ uart_check:
 ;
 ; =========================================================
 uart_init:
-        ldr     w0, [aux_base]
+        adr     x0, aux_base
+        ldr     w0, [x0]
         mov     w1, 1
         str     w1, [x0, AUX_ENABLES]
         mov     w1, 0
@@ -149,58 +160,14 @@ uart_init:
         str     w1, [x0, AUX_MU_IIR_REG]
         mov     w1, 270
         str     w1, [x0, AUX_MU_BAUD_REG]
-        ldr     w0, [gpio_base]
+        adr     x0, gpio_base
+        ldr     w0, [x0]
         ldr     w1, [x0, GPIO_GPFSEL1]
         ldr     w2, [gpio_sel1_uart_mask1]
         and     w1, w1, w2
-        ldr     w2, [gpio_sel1_uart_mask2]
-        orr     w1, w1, w2
         str     w1, [x0, GPIO_GPFSEL1]
-        ldr     w0, [aux_base]
+        adr     x0, aux_base
+        ldr     w0, [x0]
         mov     w1, 3
         str     w1, [x0, AUX_MU_CNTL_REG]
         ret
-
-;.globl _start
-;_start:
-
-;ldr r2,=0x3F215000
-;ldr r1,=0x00000001
-;str r1,[r2,#0x04]
-;ldr r1,=0x00000000
-;str r1,[r2,#0x44]
-;ldr r1,=0x00000000
-;str r1,[r2,#0x60]
-;ldr r1,=0x00000003
-;str r1,[r2,#0x4C]
-;ldr r1,=0x00000000
-;str r1,[r2,#0x50]
-;ldr r1,=0x00000000
-;str r1,[r2,#0x44]
-;ldr r1,=0x000000C6
-;str r1,[r2,#0x48]
-;ldr r1,=0x0000010E
-;str r1,[r2,#0x68]
-
-;ldr r0,=0x3F200004
-;ldr r1,[r0]
-;ldr r3,=0xFFFD2FFF
-;and r1,r3
-;ldr r3,=0x00012000
-;orr r1,r3
-;str r1,[r0]
-
-;ldr r1,=0x00000003
-;str r1,[r2,#0x60]
-
-;ldr r1,=0x55
-;str r1,[r2,#0x40]
-
-;ldr r1,=0x56
-;txwait:
-;    ldr r0,[r2,#0x54]
-;    tst r0,#0x20
-;    beq txwait
-;    str r1,[r2,#0x40]
-;
-;b .

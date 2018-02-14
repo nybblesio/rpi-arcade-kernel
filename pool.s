@@ -29,9 +29,18 @@
 ; Constant Pool Data Section
 ;
 ; =========================================================
-aux_base:   dw  PERIPHERAL_BASE + AUX_BASE
-gpio_base:  dw  PERIPHERAL_BASE + GPIO_BASE
-mail_base:  dw  PERIPHERAL_BASE + MAIL_BASE
+align 8
+aux_base:   
+        dw  PERIPHERAL_BASE + AUX_BASE
 
-gpio_sel1_uart_mask1: dw  $fffd2fff
-gpio_sel1_uart_mask2: dw  $00012000
+align 8
+gpio_base:  
+        dw  PERIPHERAL_BASE + GPIO_BASE
+
+align 8        
+mail_base:  
+        dw  PERIPHERAL_BASE + MAIL_BASE
+
+align 8
+gpio_sel1_uart_mask1:
+        dw  $fffd2fff

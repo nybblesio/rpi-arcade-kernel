@@ -30,7 +30,7 @@
 ;
 ; =========================================================
 macro b2p reg {
-         and     w0, w0, $3fffffff
+         and     reg, reg, $3fffffff
 }
 
 struc mail_command_t tag*, size, data1, data2 {
@@ -64,8 +64,10 @@ struc mail_command_t tag*, size, data1, data2 {
 ;
 ; =========================================================
 wait_for_mailbox_write:
-.loop:  ldr     x2, [x1, MAIL_STATUS]
-        tst     x2, MAIL_FULL
+        adr     x1, mail_base
+        ldr     w1, [x1]
+.loop:  ldr     w2, [x1, MAIL_STATUS]
+        ands    w2, w2, MAIL_FULL
         b.ne    .loop
         ret
 
@@ -83,26 +85,12 @@ wait_for_mailbox_write:
 ;
 ; =========================================================
 wait_for_mailbox_ready:
-.loop:  ldr     x2, [x1, MAIL_STATUS]
-        tst     x2, MAIL_EMPTY
+        adr     x1, mail_base
+        ldr     w1, [x1]
+.loop:  ldr     w2, [x1, MAIL_STATUS]
+        ands    w2, w2, MAIL_EMPTY
         b.ne    .loop
-        ldr     x2, [x1, MAIL_READ]
-        ret
-
-; =========================================================
-;
-; mailbox_base_address
-;
-; stack:
-;   (none)
-;
-; registers:
-;   x1 is loaded with mail base address
-;
-; =========================================================
-mailbox_base_address:        
-        mov     x1, MAIL_BASE
-        orr     x1, x1, PERIPHERAL_BASE
+        ldr     w2, [x1, MAIL_READ]
         ret
 
 ; =========================================================
@@ -116,12 +104,16 @@ mailbox_base_address:
 ;   w0 address of command array
 ;
 ; =========================================================
-write_mailbox:        
-        mov     x1, MAIL_BASE
-        orr     x1, x1, PERIPHERAL_BASE
+write_mailbox:
+        sub     sp, sp, #16
+        stp     x0, x30, [sp]
         bl      wait_for_mailbox_write
+        adr     x1, mail_base
+        ldr     w1, [x1]
         add     w0, w0, MAIL_TAGS
         str     w0, [x1, MAIL_WRITE]
         bl      wait_for_mailbox_ready
+        ldp     x0, x30, [sp]
+        add     sp, sp, #16
         ret
 

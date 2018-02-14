@@ -31,6 +31,7 @@ format      binary as 'img'
 
 include     'constants.s'
 include     'macros.s'
+include     'pool.s'
 include     'mailbox.s'
 include     'dma.s'
 include     'font.s'

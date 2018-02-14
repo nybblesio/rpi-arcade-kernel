@@ -32,16 +32,16 @@ org     $0000
 
         b   start
 
-include     'constants.s'
-include     'macros.s'
-include     'pool.s'
-include     'timer.s'
-include     'dma.s'
-include     'mailbox.s'
-include     'uart.s'
-include     'joy.s'
-include     'font.s'
-include     'video.s'
+include 'constants.s'
+include 'macros.s'
+include 'pool.s'
+include 'timer.s'
+include 'dma.s'
+include 'mailbox.s'
+include 'uart.s'
+include 'joy.s'
+include 'font.s'
+include 'video.s'
 
 ; =========================================================
 ;
@@ -108,12 +108,11 @@ firq_isr:
 ; =========================================================
 kernel_core:        
         mov     sp, kernel_stack
-        add     sp, sp, $40000
 
         bl      dma_init
         bl      timer_init
-        bl      joy_init
         bl      uart_init
+        ;bl      joy_init
         bl      video_init
 
         mov     w1, 'A'
@@ -127,40 +126,42 @@ kernel_core:
         mov     w1, $0a
         bl      uart_send
 
-.loop:
-        ; handle the serial interface 
-        bl      uart_recv
-        bl      uart_send
-        bl      joy_read
-
         ;
         ; registers w10-w19 are generally free/safe to use
         ;
-        lbb
-        
-        adr     x10, console_buffer
-        mov     w1, 0               ; y position
-        mov     w2, 0               ; x position
-        mov     w16, LINES_PER_PAGE 
-.row:   adr     x3, line_buffer
-        adr     x5, nitram_micro_font
-        mov     w4, 0
-        mov     w15, 0              ; last color
-        mov     w11, CHARS_PER_LINE
-.char:  ldrb    w13, [x10], 1       ; character
-        ldrb    w14, [x10], 1       ; color
-        cmp     w14, w15
-        b.ne    .span
-.span:  mov     w15, w14
-        bl      draw_string
-        adr     x3, line_buffer
-        mov     w4, 0
-        subs    w11, w11, 1
-        b.ne    .char
-        add     w1, w1, FONT_HEIGHT + 1
-        subs    w16, w16, 1
-        b.ne    .loop
+.loop:
+        ; handle the serial interface 
+        bl      uart_recv
+        cbz     w1, .no_char
+        bl      uart_send
 
+.no_char:        
+        ;bl      joy_read
+        lbb
+;        
+;        adr     x10, console_buffer
+;        mov     w1, 0               ; y position
+;        mov     w2, 0               ; x position
+;        mov     w16, LINES_PER_PAGE 
+;.row:   adr     x3, line_buffer
+;        adr     x5, nitram_micro_font
+;        mov     w4, 0
+;        mov     w15, 0              ; last color
+;        mov     w11, CHARS_PER_LINE
+;.char:  ldrb    w13, [x10], 1       ; character
+;        ldrb    w14, [x10], 1       ; color
+;        cmp     w14, w15
+;        b.ne    .span
+;.span:  mov     w15, w14
+;        bl      draw_string
+;        adr     x3, line_buffer
+;        mov     w4, 0
+;        subs    w11, w11, 1
+;        b.ne    .char
+;        add     w1, w1, FONT_HEIGHT + 1
+;        subs    w16, w16, 1
+;        b.ne    .loop
+;
         bl      page_swap
         b       .loop
 
@@ -177,7 +178,7 @@ kernel_core:
 ; =========================================================
 watchdog_core:
         mov     sp, kernel_stack
-        add     sp, sp, $30000
+        sub     sp, sp, $10000
 .loop:  b       .loop
 
 ; =========================================================
@@ -193,7 +194,7 @@ watchdog_core:
 ; =========================================================
 core_two:
         mov     sp, kernel_stack
-        add     sp, sp, $20000
+        sub     sp, sp, $20000
 .loop:  b       .loop
 
 ; =========================================================
@@ -209,7 +210,7 @@ core_two:
 ; =========================================================
 core_three:
         mov     sp, kernel_stack
-        add     sp, sp, $10000
+        sub     sp, sp, $30000
 .loop:  b       .loop
 
 ; =========================================================
@@ -268,5 +269,6 @@ game_tick_vector    dw  0
 ; =========================================================
 org $ffc0000
 
-kernel_stack:
         db  $40000 dup(0)
+
+kernel_stack:
