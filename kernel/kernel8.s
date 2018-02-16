@@ -98,7 +98,7 @@ firq_isr:
 
 ; =========================================================
 ;
-; kernel_core
+; kernel_core (core #0)
 ;
 ; stack:
 ;   (none)
@@ -135,12 +135,13 @@ kernel_core:
         ; handle the serial interface 
         bl      uart_recv
         cbz     w1, .no_char
+
         bl      uart_send
 
 .no_char:        
         ;bl      joy_read
         lbb
-;        
+         
 ;        adr     x10, console_buffer
 ;        mov     w1, 0               ; y position
 ;        mov     w2, 0               ; x position
@@ -163,13 +164,13 @@ kernel_core:
 ;        add     w1, w1, FONT_HEIGHT + 1
 ;        subs    w16, w16, 1
 ;        b.ne    .loop
-;
+ 
         bl      page_swap
         b       .loop
 
 ; =========================================================
 ;
-; watchdog_core
+; watchdog_core (core #1)
 ;
 ; stack:
 ;   (none)
@@ -180,7 +181,7 @@ kernel_core:
 ; =========================================================
 watchdog_core:
         mov     sp, kernel_stack
-        sub     sp, sp, $10000
+        sub     sp, sp, CORE_STACK_SIZE * 1
 .loop:  b       .loop
 
 ; =========================================================
@@ -196,7 +197,7 @@ watchdog_core:
 ; =========================================================
 core_two:
         mov     sp, kernel_stack
-        sub     sp, sp, $20000
+        sub     sp, sp, CORE_STACK_SIZE * 2
 .loop:  b       .loop
 
 ; =========================================================
@@ -212,7 +213,7 @@ core_two:
 ; =========================================================
 core_three:
         mov     sp, kernel_stack
-        sub     sp, sp, $30000
+        sub     sp, sp, CORE_STACK_SIZE * 3
 .loop:  b       .loop
 
 ; =========================================================
@@ -261,7 +262,7 @@ align 8
 kernel_license2:    strdef  "See the LICENSE file for details.", $0d, $0a, $0d, $0a
 
 align 8
-kernel_help:        strdef  "Use the ", $1b, "[1m", "help", $1b, "[m", \
+kernel_help:        strdef  "Use the ", $1b, "[1m", $1b, "[4m", "help", $1b, "[m", \
                                 " command to learn more about how the", $0d, $0a, \
                                 "serial console works.", $0d, $0a, $0d, $0a
 
@@ -273,7 +274,7 @@ kernel_help:        strdef  "Use the ", $1b, "[1m", "help", $1b, "[m", \
 
 include 'game_abi.s'
 
-org $8000
+org GAME_ABI_BOTTOM
 
 game_init_vector    dw  0
 game_tick_vector    dw  0
@@ -290,8 +291,13 @@ game_tick_vector    dw  0
 ; block of RAM.
 ;
 ; =========================================================
-org $ffc0000
+STACK_TOP = $10000000
+CORE_STACK_SIZE = $10000
+CORE_COUNT = 4
+STACK_SIZE = CORE_STACK_SIZE * CORE_COUNT
 
-        db  $40000 dup(0)
+org STACK_TOP - STACK_SIZE
+
+        db  STACK_SIZE dup(0)
 
 kernel_stack:

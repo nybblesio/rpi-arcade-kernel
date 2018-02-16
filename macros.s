@@ -36,24 +36,14 @@ macro delay cycles {
         b.ne    .loop        
 }
 
-macro pload reg*, label* {
-        adr     x0, label
-        ldr     reg, [x0]
+macro strlist [params] {
+        forward db  params
 }
 
-macro pstore reg*, label* {
-        adr     x0, label
-        str     reg, [x0]
-}
-
-macro strlist [strings] {
-        forward db  strings
-}
-
-macro strdef [strings] {
+macro strdef [params] {
 common
         local   .strend
         dw      .strend - $
-        strlist strings
+        strlist params
 .strend:
 }

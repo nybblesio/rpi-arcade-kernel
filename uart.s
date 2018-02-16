@@ -88,8 +88,7 @@ uart_status:
 ;
 ; =========================================================
 uart_recv:
-        adr     x0, aux_base
-        ldr     w0, [x0]
+        pload   x0, w0, aux_base
         ldr     w2, [x0, AUX_MU_LSR_REG]
         ands    w2, w2, $01
         b.ne    .ready
@@ -113,7 +112,7 @@ uart_recv:
 ;
 ; =========================================================
 uart_send:
-        pload   w0, aux_base
+        pload   x0, w0, aux_base
 .full:  ldr     w2, [x0, AUX_MU_LSR_REG]
         ands    w2, w2, $20
         b.ne    .ready
@@ -137,7 +136,7 @@ uart_send:
 uart_send_hex:
         sub     sp, sp, #16
         stp     x0, x30, [sp]
-        pload   w0, aux_base
+        pload   x0, w0, aux_base
         mov     w3, 32
 .full:  ldr     w2, [x0, AUX_MU_LSR_REG]
         ands    w2, w2, $20
@@ -168,7 +167,7 @@ uart_send_hex:
 ; registers:
 ;   w0 scratch register
 ;   w1 pointer to string structure
-;   w2 number of characters
+;   w2 scratch: number of characters
 ;   w3 scratch register
 ;
 ; =========================================================
@@ -176,7 +175,7 @@ uart_send_string:
         sub     sp, sp, #16
         stp     x0, x30, [sp]        
         ldr     w2, [x1], 1
-        pload   w0, aux_base
+        pload   x0, w0, aux_base
 .next:  ldr     w3, [x0, AUX_MU_LSR_REG]
         ands    w3, w3, $20
         b.ne    .ready
@@ -240,8 +239,7 @@ uart_check:
 ;
 ; =========================================================
 uart_init:
-        adr     x0, aux_base
-        ldr     w0, [x0]
+        pload   x0, w0, aux_base
         mov     w1, 1
         str     w1, [x0, AUX_ENABLES]
         mov     w1, 0
@@ -258,14 +256,12 @@ uart_init:
         str     w1, [x0, AUX_MU_IIR_REG]
         mov     w1, 270
         str     w1, [x0, AUX_MU_BAUD_REG]
-        adr     x0, gpio_base
-        ldr     w0, [x0]
+        pload   x0, w0, gpio_base
         ldr     w1, [x0, GPIO_GPFSEL1]
         ldr     w2, [gpio_sel1_uart_mask1]
         and     w1, w1, w2
         str     w1, [x0, GPIO_GPFSEL1]
-        adr     x0, aux_base
-        ldr     w0, [x0]
+        pload   x0, w0, aux_base
         mov     w1, 3
         str     w1, [x0, AUX_MU_CNTL_REG]
         ret

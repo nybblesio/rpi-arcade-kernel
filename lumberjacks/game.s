@@ -44,7 +44,8 @@ include     'video.s'
 ; =========================================================
 include 'game_abi.s'
 
-org $8000
+org GAME_ABI_BOTTOM
+
 initialize_vector:  dw  game_init
 tick_vector:        dw  game_tick
 
@@ -201,7 +202,6 @@ macro sprite number, ypos, xpos, tile, pal, flags {
 game_init:
         sprite  0, 32, 32, 1, 0, 0  
         sprite  1, 64, 32, 2, 0, 0
-
         ret
 
 ; =========================================================
@@ -230,11 +230,11 @@ game_tick:
         tile    w12, w13, w15, w16
         add     w13, w13, TILE_WIDTH
         subs    w14, w14, 1
-        b.ne    game_tick.bg_tile
+        b.ne    .bg_tile
         mov     w13, 0
         add     w12, w12, TILE_HEIGHT
         subs    w11, w11, 1
-        b.ne    game_tick.bg_row
+        b.ne    .bg_row
 
         ; sprite render loop
         adr     x10, sprite_control
@@ -248,9 +248,7 @@ game_tick:
         add     x10, x10, 4         ; skip user flags
         stamp   w13, w14, w12, w15
         subs    w11, w11, 1
-        b.ne    game_tick.sprite_tile
-
-        bl      page_swap
+        b.ne    .sprite_tile
 
         ret
 
@@ -280,10 +278,6 @@ rept 960 num {
 }
 
 align 16
-joy1:           
-        dw      0
-joy2:           
-        dw      0
 sound:          
         dw      256 dup(0)
 
@@ -294,4 +288,3 @@ timber_fg:
 align 8
 timber_bg:
         file    'assets/timbg.bin'
-

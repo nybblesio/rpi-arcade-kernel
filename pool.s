@@ -26,6 +26,21 @@
 
 ; =========================================================
 ;
+; Macros
+;
+; =========================================================
+macro pload addr_reg*, data_reg*, label* {
+        adr     addr_reg, label
+        ldr     data_reg, [addr_reg]
+}
+
+macro pstore addr_reg*, data_reg*, label* {
+        adr     addr_reg, label
+        str     data_reg, [addr_reg]
+}
+
+; =========================================================
+;
 ; Constant Pool Data Section
 ;
 ; =========================================================

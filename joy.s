@@ -46,7 +46,7 @@ joy_state:  dw  0
 ;
 ; =========================================================
 joy_read:
-        pload   w0, gpio_base
+        pload   x0, w0, gpio_base
         mov     w1, GPIO_11
         str     w1, [x0, GPIO_GPSET0]
         delay   32
@@ -69,7 +69,7 @@ joy_read:
         delay   32
         subs    w2, w2, 1
         b.ge    .loop
-        pstore  w1, joy_state
+        pstore  x0, w1, joy_state
         ret
 
 ; =========================================================
@@ -80,12 +80,16 @@ joy_read:
 ;   (none)
 ;
 ; registers:
-;   (none)
-;
+;   x0/w0 scratch: gpio_base
+;   w1    scratch: GPIO_GPFSEL1 mask
+;   w2    GPIO_FSEL0_OUT + GPIO_FSEL1_OUT new mask
+;   
 ; =========================================================
 joy_init:
-        pload   w0, gpio_base
-        mov     w1, GPIO_FSEL0_OUT + GPIO_FSEL1_OUT
+        pload   x0, w0, gpio_base
+        ldr     w1, [x0, GPIO_GPFSEL1]
+        mov     w2, GPIO_FSEL0_OUT + GPIO_FSEL1_OUT
+        and     w1, w1, w2
         str     w1, [x0, GPIO_GPFSEL1]
         ret
 

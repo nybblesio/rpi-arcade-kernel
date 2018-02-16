@@ -64,8 +64,7 @@ struc mail_command_t tag*, size, data1, data2 {
 ;
 ; =========================================================
 wait_for_mailbox_write:
-        adr     x1, mail_base
-        ldr     w1, [x1]
+        pload   x1, w1, mail_base
 .loop:  ldr     w2, [x1, MAIL_STATUS]
         ands    w2, w2, MAIL_FULL
         b.ne    .loop
@@ -85,8 +84,7 @@ wait_for_mailbox_write:
 ;
 ; =========================================================
 wait_for_mailbox_ready:
-        adr     x1, mail_base
-        ldr     w1, [x1]
+        pload   x1, w1, mail_base
 .loop:  ldr     w2, [x1, MAIL_STATUS]
         ands    w2, w2, MAIL_EMPTY
         b.ne    .loop
@@ -108,12 +106,10 @@ write_mailbox:
         sub     sp, sp, #16
         stp     x0, x30, [sp]
         bl      wait_for_mailbox_write
-        adr     x1, mail_base
-        ldr     w1, [x1]
+        pload   x1, w1, mail_base
         add     w0, w0, MAIL_TAGS
         str     w0, [x1, MAIL_WRITE]
         bl      wait_for_mailbox_ready
         ldp     x0, x30, [sp]
         add     sp, sp, #16
-        ret
-
+        ret    
