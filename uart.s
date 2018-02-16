@@ -174,7 +174,7 @@ uart_send_hex:
 uart_send_string:
         sub     sp, sp, #16
         stp     x0, x30, [sp]        
-        ldr     w2, [x1], 1
+        ldr     w2, [x1], 4
         pload   x0, w0, aux_base
 .next:  ldr     w3, [x0, AUX_MU_LSR_REG]
         ands    w3, w3, $20

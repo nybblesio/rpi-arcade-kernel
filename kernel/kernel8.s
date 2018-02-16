@@ -98,6 +98,26 @@ firq_isr:
 
 ; =========================================================
 ;
+; send_command_prompt
+;
+; stack:
+;   (none)
+;
+; registers:
+;   (none)
+;
+; =========================================================
+send_command_prompt:
+        sub     sp, sp, #16
+        stp     x0, x30, [sp]
+        uart_char   '>'
+        uart_space
+        ldp     x0, x30, [sp]
+        add     sp, sp, #16
+        ret
+
+; =========================================================
+;
 ; kernel_core (core #0)
 ;
 ; stack:
@@ -123,22 +143,29 @@ kernel_core:
         uart_string kernel_license2
         uart_string kernel_help
 
-        uart_hex    $beef
-        uart_space
-        uart_char   '>'
-        uart_space
-
-        ;
-        ; registers w10-w19 are generally free/safe to use
-        ;
+        bl      send_command_prompt
+        
 .loop:
-        ; handle the serial interface 
         bl      uart_recv
-        cbz     w1, .no_char
+        cbz     w1, .console
 
+        cmp     w1, LINEFEED_CHAR
+        b.eq    .return
+        cmp     w1, BACKSPACE_CHAR
+        b.eq    .bs
         bl      uart_send
+        b       .console
 
-.no_char:        
+.return:
+        bl      uart_send
+        bl      send_command_prompt
+        b       .console
+
+.bs:    uart_char   BACKSPACE_CHAR
+        uart_string delete_char
+        b       .console
+
+.console:        
         ;bl      joy_read
         lbb
          
@@ -221,6 +248,9 @@ core_three:
 ; Data Section
 ;
 ; =========================================================
+BACKSPACE_CHAR  = $08
+RETURN_CHAR     = $0d
+LINEFEED_CHAR   = $0a
 
 CHARS_PER_LINE = SCREEN_WIDTH / 8
 LINES_PER_PAGE = SCREEN_HEIGHT / 8
@@ -245,26 +275,33 @@ struc caret_t {
 
 caret   caret_t
 
-align 8
-clr_screen:         strdef  $1b, "[2J", $1b, "[1;1H"
+TERM_CLS        equ $1b, "[2J"
+TERM_CURPOS11   equ $1b, "[1;1H"
+TERM_REVERSE    equ $1b, "[7m"
+TERM_NOATTR     equ $1b, "[m"
+TERM_UNDERLINE  equ $1b, "[4m"
+TERM_BLINK      equ $1b, "[5m"
+TERM_BOLD       equ $1b, "[1m"
+TERM_DELCHAR    equ $1b, "[1P"
+TERM_NEWLINE    equ $0d, $0a
+TERM_NEWLINE2   equ $0d, $0a, $0d, $0a
 
-align 8
-kernel_title:       strdef  $1b, "[7m", \
-                            "                Arcade Kernel Kit, v0.1              ", $1b, "[m", $0d, $0a
+delete_char:        strdef  TERM_DELCHAR
 
-align 8
-kernel_copyright:   strdef  "Copyright (C) 2018 Jeff Panici.  All rights reserved.", $0d, $0a
+clr_screen:         strdef  TERM_CLS, TERM_CURPOS11
 
-align 8
-kernel_license1:    strdef  "This software is licensed under the MIT license.", $0d, $0a
+kernel_title:       strdef  TERM_REVERSE, \
+                            "                Arcade Kernel Kit, v0.1              ", TERM_NOATTR, TERM_NEWLINE
 
-align 8
-kernel_license2:    strdef  "See the LICENSE file for details.", $0d, $0a, $0d, $0a
+kernel_copyright:   strdef  "Copyright (C) 2018 Jeff Panici.  All rights reserved.", TERM_NEWLINE
 
-align 8
-kernel_help:        strdef  "Use the ", $1b, "[1m", $1b, "[4m", "help", $1b, "[m", \
-                                " command to learn more about how the", $0d, $0a, \
-                                "serial console works.", $0d, $0a, $0d, $0a
+kernel_license1:    strdef  "This software is licensed under the MIT license.", TERM_NEWLINE
+
+kernel_license2:    strdef  "See the LICENSE file for details.", TERM_NEWLINE2
+
+kernel_help:        strdef  "Use the ", TERM_BOLD, TERM_UNDERLINE, "help", TERM_NOATTR, \
+                                " command to learn more about how the", TERM_NEWLINE, \
+                                "serial console works.", TERM_NEWLINE2
 
 ; =========================================================
 ;
