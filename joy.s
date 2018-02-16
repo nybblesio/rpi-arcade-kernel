@@ -31,7 +31,7 @@
 ; Data Section
 ;
 ; =========================================================
-align 4
+align 8
 joy_state:  dw  0
 
 ; =========================================================
@@ -46,7 +46,7 @@ joy_state:  dw  0
 ;
 ; =========================================================
 joy_read:
-        ldr     w0, [gpio_base]
+        pload   w0, gpio_base
         mov     w1, GPIO_11
         str     w1, [x0, GPIO_GPSET0]
         delay   32
@@ -69,8 +69,7 @@ joy_read:
         delay   32
         subs    w2, w2, 1
         b.ge    .loop
-        adr     x0, joy_state
-        str     w1, [x0]
+        pstore  w1, joy_state
         ret
 
 ; =========================================================
@@ -85,7 +84,7 @@ joy_read:
 ;
 ; =========================================================
 joy_init:
-        ldr     w0, [gpio_base]
+        pload   w0, gpio_base
         mov     w1, GPIO_FSEL0_OUT + GPIO_FSEL1_OUT
         str     w1, [x0, GPIO_GPFSEL1]
         ret

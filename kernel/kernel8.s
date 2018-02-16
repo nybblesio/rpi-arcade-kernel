@@ -54,6 +54,7 @@ include 'video.s'
 ;   (none)
 ;
 ; =========================================================
+align 16
 start:
         mrs     x0, MPIDR_EL1
         mov     x1, #$ff000000
@@ -115,16 +116,17 @@ kernel_core:
         ;bl      joy_init
         bl      video_init
 
-        mov     w1, 'A'
-        bl      uart_send
-        mov     w1, 'K'
-        bl      uart_send
-        mov     w1, 'K'
-        bl      uart_send
-        mov     w1, $0d
-        bl      uart_send
-        mov     w1, $0a
-        bl      uart_send
+        uart_string clr_screen
+        uart_string kernel_title
+        uart_string kernel_copyright
+        uart_string kernel_license1
+        uart_string kernel_license2
+        uart_string kernel_help
+
+        uart_hex    $beef
+        uart_space
+        uart_char   '>'
+        uart_space
 
         ;
         ; registers w10-w19 are generally free/safe to use
@@ -241,6 +243,27 @@ struc caret_t {
 }
 
 caret   caret_t
+
+align 8
+clr_screen:         strdef  $1b, "[2J", $1b, "[1;1H"
+
+align 8
+kernel_title:       strdef  $1b, "[7m", \
+                            "                Arcade Kernel Kit, v0.1              ", $1b, "[m", $0d, $0a
+
+align 8
+kernel_copyright:   strdef  "Copyright (C) 2018 Jeff Panici.  All rights reserved.", $0d, $0a
+
+align 8
+kernel_license1:    strdef  "This software is licensed under the MIT license.", $0d, $0a
+
+align 8
+kernel_license2:    strdef  "See the LICENSE file for details.", $0d, $0a, $0d, $0a
+
+align 8
+kernel_help:        strdef  "Use the ", $1b, "[1m", "help", $1b, "[m", \
+                                " command to learn more about how the", $0d, $0a, \
+                                "serial console works.", $0d, $0a, $0d, $0a
 
 ; =========================================================
 ;
