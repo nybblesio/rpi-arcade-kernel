@@ -148,12 +148,25 @@ kernel_core:
 .loop:
         bl      uart_recv
         cbz     w1, .console
-
+        
+        cmp     w1, RETURN_CHAR
+        b.eq    .echo
         cmp     w1, LINEFEED_CHAR
         b.eq    .return
         cmp     w1, BACKSPACE_CHAR
         b.eq    .bs
-        bl      uart_send
+
+        adr     x2, command_buffer
+        pload   x3, w3, command_buffer_offset
+        add     x2, x2, x3
+        str     w1, [x2]
+        add     w3, w3, 1
+        cmp     w3, TERMINAL_CHARS_PER_LINE
+        b.le    .store
+        b       .console
+.store: pstore  x3, w3, command_buffer_offset
+
+.echo:  bl      uart_send
         b       .console
 
 .return:
@@ -255,16 +268,20 @@ LINEFEED_CHAR   = $0a
 CHARS_PER_LINE = SCREEN_WIDTH / 8
 LINES_PER_PAGE = SCREEN_HEIGHT / 8
 
-align 8
+TERMINAL_CHARS_PER_LINE = 80
+
 console_buffer:
         db  (LINES_PER_PAGE * CHARS_PER_LINE) * 2 dup (0, 4)
 column  db  0
 row     db  0
 
-align 8
-line_buffer:
+con_line_buffer:
         db CHARS_PER_LINE dup (0)
-lb_offs db  0
+con_line_buffer_offset: db  0
+
+command_buffer:
+        db TERMINAL_CHARS_PER_LINE dup (0)
+command_buffer_offset:  db  0
 
 struc caret_t {
         .y      db  0
@@ -285,20 +302,43 @@ TERM_BOLD       equ $1b, "[1m"
 TERM_DELCHAR    equ $1b, "[1P"
 TERM_NEWLINE    equ $0d, $0a
 TERM_NEWLINE2   equ $0d, $0a, $0d, $0a
+TERM_BLACK      equ $1b, "[30m"
+TERM_RED        equ $1b, "[31m"
+TERM_GREEN      equ $1b, "[32m"
+TERM_YELLOW     equ $1b, "[33m"
+TERM_BLUE       equ $1b, "[34m"
+TERM_MAGENTA    equ $1b, "[35m"
+TERM_CYAN       equ $1b, "[36m"
+TERM_WHITE      equ $1b, "[37m"
+TERM_BG_BLACK   equ $1b, "[40m"
+TERM_BG_RED     equ $1b, "[41m"
+TERM_BG_GREEN   equ $1b, "[42m"
+TERM_BG_YELLOW  equ $1b, "[43m"
+TERM_BG_BLUE    equ $1b, "[44m"
+TERM_BG_MAGENTA equ $1b, "[45m"
+TERM_BG_CYAN    equ $1b, "[46m"
+TERM_BG_WHITE   equ $1b, "[47m"
 
+align 4
 delete_char:        strdef  TERM_DELCHAR
 
+align 4
 clr_screen:         strdef  TERM_CLS, TERM_CURPOS11
 
+align 4
 kernel_title:       strdef  TERM_REVERSE, \
                             "                Arcade Kernel Kit, v0.1              ", TERM_NOATTR, TERM_NEWLINE
 
+align 4
 kernel_copyright:   strdef  "Copyright (C) 2018 Jeff Panici.  All rights reserved.", TERM_NEWLINE
 
+align 4
 kernel_license1:    strdef  "This software is licensed under the MIT license.", TERM_NEWLINE
 
+align 4
 kernel_license2:    strdef  "See the LICENSE file for details.", TERM_NEWLINE2
 
+align 4
 kernel_help:        strdef  "Use the ", TERM_BOLD, TERM_UNDERLINE, "help", TERM_NOATTR, \
                                 " command to learn more about how the", TERM_NEWLINE, \
                                 "serial console works.", TERM_NEWLINE2

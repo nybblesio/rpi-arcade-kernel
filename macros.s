@@ -41,7 +41,6 @@ macro strlist [params] {
 }
 
 macro strdef [params] {
-align 4
 common
         local   .strend
         dw      .strend - .strstart
