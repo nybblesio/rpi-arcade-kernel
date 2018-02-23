@@ -32,18 +32,18 @@
 ;
 ; =========================================================
 macro uart_hex value {
-        uart_char   '$'
-        mov     w1, value
-        bl      uart_send_hex
+        uart_chr    '$'
+        mov         w1, value
+        bl          uart_send_hex
 }
 
-macro uart_char char {
+macro uart_chr char {
         mov     w1, char
         bl      uart_send
 }
 
-macro uart_space {
-        uart_char   ' '
+macro uart_spc {
+        uart_chr   ' '
 }
 
 macro uart_str label {
@@ -51,9 +51,9 @@ macro uart_str label {
         bl      uart_send_string
 }
 
-macro uart_newline {
-        uart_char   $0d
-        uart_char   $0a
+macro uart_nl {
+        uart_chr   $0d
+        uart_chr   $0a
 }
 
 ; =========================================================

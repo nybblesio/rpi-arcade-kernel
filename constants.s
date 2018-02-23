@@ -23,6 +23,7 @@
 ; for details about this license.
 ;
 ; =========================================================
+
 TRUE                    = 1
 FALSE                   = 0
 
@@ -39,6 +40,50 @@ SPRITE_HEIGHT           = 32
 SPRITE_BYTES            = SPRITE_WIDTH * SPRITE_HEIGHT
 
 PALETTE_SIZE            = 16
+
+ESC_CHAR        = $1b
+BACKSPACE_CHAR  = $08
+RETURN_CHAR     = $0d
+LINEFEED_CHAR   = $0a
+LEFT_BRACKET    = $5b
+CHAR_A          = $41
+CHAR_B          = $42
+CHAR_C          = $43
+CHAR_D          = $44
+CHAR_SPACE      = $20
+
+CHARS_PER_LINE = SCREEN_WIDTH / 8
+LINES_PER_PAGE = SCREEN_HEIGHT / 8
+
+TERM_CHARS_PER_LINE = 76
+PARSE_BUFFER_LENGTH = 32
+
+TERM_CLS        equ ESC_CHAR, "[2J"
+TERM_CURPOS11   equ ESC_CHAR, "[1;1H"
+TERM_REVERSE    equ ESC_CHAR, "[7m"
+TERM_NOATTR     equ ESC_CHAR, "[m"
+TERM_UNDERLINE  equ ESC_CHAR, "[4m"
+TERM_BLINK      equ ESC_CHAR, "[5m"
+TERM_BOLD       equ ESC_CHAR, "[1m"
+TERM_DELCHAR    equ ESC_CHAR, "[1P"
+TERM_NEWLINE    equ $0d, $0a
+TERM_NEWLINE2   equ $0d, $0a, $0d, $0a
+TERM_BLACK      equ ESC_CHAR, "[30m"
+TERM_RED        equ ESC_CHAR, "[31m"
+TERM_GREEN      equ ESC_CHAR, "[32m"
+TERM_YELLOW     equ ESC_CHAR, "[33m"
+TERM_BLUE       equ ESC_CHAR, "[34m"
+TERM_MAGENTA    equ ESC_CHAR, "[35m"
+TERM_CYAN       equ ESC_CHAR, "[36m"
+TERM_WHITE      equ ESC_CHAR, "[37m"
+TERM_BG_BLACK   equ ESC_CHAR, "[40m"
+TERM_BG_RED     equ ESC_CHAR, "[41m"
+TERM_BG_GREEN   equ ESC_CHAR, "[42m"
+TERM_BG_YELLOW  equ ESC_CHAR, "[43m"
+TERM_BG_BLUE    equ ESC_CHAR, "[44m"
+TERM_BG_MAGENTA equ ESC_CHAR, "[45m"
+TERM_BG_CYAN    equ ESC_CHAR, "[46m"
+TERM_BG_WHITE   equ ESC_CHAR, "[47m"
 
 ; =========================================================
 ;
@@ -883,3 +928,14 @@ AUX_MU_SCRATCH  = $5C
 AUX_MU_CNTL_REG = $60
 AUX_MU_STAT_REG = $64
 AUX_MU_BAUD_REG = $68
+
+; System Timers
+ARM_IO_BASE = $20000000
+ARM_SYSTIMER_BASE = ARM_IO_BASE + $3000
+ARM_SYSTIMER_CS   = ARM_SYSTIMER_BASE + $00
+ARM_SYSTIMER_CLO  = ARM_SYSTIMER_BASE + $04
+ARM_SYSTIMER_CHI  = ARM_SYSTIMER_BASE + $08
+ARM_SYSTIMER_C0   = ARM_SYSTIMER_BASE + $0C
+ARM_SYSTIMER_C1   = ARM_SYSTIMER_BASE + $10
+ARM_SYSTIMER_C2   = ARM_SYSTIMER_BASE + $14
+ARM_SYSTIMER_C3   = ARM_SYSTIMER_BASE + $18
