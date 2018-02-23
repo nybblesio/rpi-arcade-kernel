@@ -40,11 +40,13 @@ macro strlist [params] {
         forward db  params
 }
 
-macro strdef [params] {
+macro strdef name, [params] {
+align 4
 common
-        local   .strend
-        dw      .strend - .strstart
-.strstart:        
+label name
+        local   .end, .start
+        dw      .end - .start
+.start:        
         strlist params
-.strend:
+.end:
 }

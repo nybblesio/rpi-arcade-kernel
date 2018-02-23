@@ -98,7 +98,7 @@ firq_isr:
 
 ; =========================================================
 ;
-; send_command_prompt
+; send_welcome
 ;
 ; stack:
 ;   (none)
@@ -107,7 +107,31 @@ firq_isr:
 ;   (none)
 ;
 ; =========================================================
-send_command_prompt:
+send_welcome:
+        sub     sp, sp, #16
+        stp     x0, x30, [sp]
+        uart_str clr_screen
+        uart_str kernel_title
+        uart_str kernel_copyright
+        uart_str kernel_license1
+        uart_str kernel_license2
+        uart_str kernel_help
+        ldp     x0, x30, [sp]
+        add     sp, sp, #16
+        ret
+
+; =========================================================
+;
+; send_prompt
+;
+; stack:
+;   (none)
+;
+; registers:
+;   (none)
+;
+; =========================================================
+send_prompt:
         sub     sp, sp, #16
         stp     x0, x30, [sp]
         uart_char   '>'
@@ -135,15 +159,8 @@ kernel_core:
         bl      uart_init
         ;bl      joy_init
         bl      video_init
-
-        uart_string clr_screen
-        uart_string kernel_title
-        uart_string kernel_copyright
-        uart_string kernel_license1
-        uart_string kernel_license2
-        uart_string kernel_help
-
-        bl      send_command_prompt
+        bl      send_welcome
+        bl      send_prompt
         
 .loop:
         bl      uart_recv
@@ -154,29 +171,38 @@ kernel_core:
         cmp     w1, LINEFEED_CHAR
         b.eq    .return
         cmp     w1, BACKSPACE_CHAR
-        b.eq    .bs
+        b.eq    .back
 
-        adr     x2, command_buffer
         pload   x3, w3, command_buffer_offset
-        add     x2, x2, x3
-        str     w1, [x2]
-        add     w3, w3, 1
         cmp     w3, TERMINAL_CHARS_PER_LINE
-        b.le    .store
-        b       .console
-.store: pstore  x3, w3, command_buffer_offset
-
+        b.eq    .console
+        adr     x2, command_buffer
+        add     x2, x2, x3
+        strb    w1, [x2]
+        add     w3, w3, 1
+        pstore  x2, w3, command_buffer_offset
 .echo:  bl      uart_send
         b       .console
 
 .return:
+        mov     w3, 0 
+        pstore  x2, w3, command_buffer_offset
         bl      uart_send
-        bl      send_command_prompt
+        bl      send_prompt
         b       .console
 
-.bs:    uart_char   BACKSPACE_CHAR
-        uart_string delete_char
+.back:  pload   x3, w3, command_buffer_offset
+        cbz     w3, .console
+        sub     w3, w3, 1
+        pstore  x2, w3, command_buffer_offset
+        uart_char   BACKSPACE_CHAR
+        uart_str    delete_char
         b       .console
+
+;
+;
+;
+;
 
 .console:        
         ;bl      joy_read
@@ -268,20 +294,25 @@ LINEFEED_CHAR   = $0a
 CHARS_PER_LINE = SCREEN_WIDTH / 8
 LINES_PER_PAGE = SCREEN_HEIGHT / 8
 
-TERMINAL_CHARS_PER_LINE = 80
+TERMINAL_CHARS_PER_LINE = 70
 
+align 8
 console_buffer:
         db  (LINES_PER_PAGE * CHARS_PER_LINE) * 2 dup (0, 4)
-column  db  0
-row     db  0
 
+align 8
 con_line_buffer:
         db CHARS_PER_LINE dup (0)
+
+align 8        
 con_line_buffer_offset: db  0
 
+align 8
 command_buffer:
         db TERMINAL_CHARS_PER_LINE dup (0)
-command_buffer_offset:  db  0
+
+align 8        
+command_buffer_offset:  dw  0
 
 struc caret_t {
         .y      db  0
@@ -290,6 +321,7 @@ struc caret_t {
         .show   db  0
 }
 
+align 8
 caret   caret_t
 
 TERM_CLS        equ $1b, "[2J"
@@ -319,29 +351,23 @@ TERM_BG_MAGENTA equ $1b, "[45m"
 TERM_BG_CYAN    equ $1b, "[46m"
 TERM_BG_WHITE   equ $1b, "[47m"
 
-align 4
-delete_char:        strdef  TERM_DELCHAR
+strdef  delete_char, TERM_DELCHAR
 
-align 4
-clr_screen:         strdef  TERM_CLS, TERM_CURPOS11
+strdef  clr_screen, TERM_CLS, TERM_CURPOS11
 
-align 4
-kernel_title:       strdef  TERM_REVERSE, \
-                            "                Arcade Kernel Kit, v0.1              ", TERM_NOATTR, TERM_NEWLINE
+strdef  kernel_title, TERM_REVERSE, \
+    "                Arcade Kernel Kit, v0.1              ", \ 
+    TERM_NOATTR, TERM_NEWLINE
 
-align 4
-kernel_copyright:   strdef  "Copyright (C) 2018 Jeff Panici.  All rights reserved.", TERM_NEWLINE
+strdef  kernel_copyright, "Copyright (C) 2018 Jeff Panici.  All rights reserved.", TERM_NEWLINE
 
-align 4
-kernel_license1:    strdef  "This software is licensed under the MIT license.", TERM_NEWLINE
+strdef  kernel_license1, "This software is licensed under the MIT license.", TERM_NEWLINE
 
-align 4
-kernel_license2:    strdef  "See the LICENSE file for details.", TERM_NEWLINE2
+strdef  kernel_license2, "See the LICENSE file for details.", TERM_NEWLINE2
 
-align 4
-kernel_help:        strdef  "Use the ", TERM_BOLD, TERM_UNDERLINE, "help", TERM_NOATTR, \
-                                " command to learn more about how the", TERM_NEWLINE, \
-                                "serial console works.", TERM_NEWLINE2
+strdef  kernel_help, "Use the ", TERM_BOLD, TERM_UNDERLINE, "help", TERM_NOATTR, \
+        " command to learn more about how the", TERM_NEWLINE, \
+        "serial console works.", TERM_NEWLINE2
 
 ; =========================================================
 ;

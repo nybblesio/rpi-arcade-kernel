@@ -46,7 +46,7 @@ macro uart_space {
         uart_char   ' '
 }
 
-macro uart_string label {
+macro uart_str label {
         adr     x1, label
         bl      uart_send_string
 }

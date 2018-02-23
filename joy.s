@@ -89,7 +89,7 @@ joy_init:
         pload   x0, w0, gpio_base
         ldr     w1, [x0, GPIO_GPFSEL1]
         mov     w2, GPIO_FSEL0_OUT + GPIO_FSEL1_OUT
-        and     w1, w1, w2
+        orr     w1, w1, w2
         str     w1, [x0, GPIO_GPFSEL1]
         ret
 
