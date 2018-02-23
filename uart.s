@@ -100,6 +100,29 @@ uart_recv:
 
 ; =========================================================
 ;
+; uart_recv_block
+;
+; stack:
+;   (none)
+;
+; registers:
+;   w0 scratch register
+;   w1 character received
+;   w2 scratch register
+;
+; =========================================================
+uart_recv_block:
+        pload   x0, w0, aux_base
+.empty: ldr     w2, [x0, AUX_MU_LSR_REG]
+        ands    w2, w2, $01
+        b.ne    .ready
+        b       .empty
+.ready: ldr     w1, [x0, AUX_MU_IO_REG]
+        and     w1, w1, $ff
+        ret
+
+; =========================================================
+;
 ; uart_send
 ;
 ; stack:

@@ -165,7 +165,9 @@ kernel_core:
 .loop:
         bl      uart_recv
         cbz     w1, .console
-        
+       
+        cmp     w1, ESC_CHAR
+        b.eq    .esc
         cmp     w1, RETURN_CHAR
         b.eq    .echo
         cmp     w1, LINEFEED_CHAR
@@ -198,6 +200,24 @@ kernel_core:
         uart_char   BACKSPACE_CHAR
         uart_str    delete_char
         b       .console
+
+.esc:   bl      uart_recv_block
+        cmp     w1, LEFT_BRACKET
+        b.ne    .console
+        bl      uart_recv_block
+        cmp     w1, CHAR_A
+        b.eq    .up
+        cmp     w1, CHAR_B
+        b.eq    .down
+        cmp     w1, CHAR_C
+        b.eq    .right
+        cmp     w1, CHAR_D
+        b.eq    .left
+        b       .console
+.up:    b       .console
+.down:  b       .console
+.left:  b       .console
+.right: b       .console
 
 ;
 ;
@@ -287,14 +307,20 @@ core_three:
 ; Data Section
 ;
 ; =========================================================
+ESC_CHAR        = $1b
 BACKSPACE_CHAR  = $08
 RETURN_CHAR     = $0d
 LINEFEED_CHAR   = $0a
+LEFT_BRACKET    = $5b
+CHAR_A          = $41
+CHAR_B          = $42
+CHAR_C          = $43
+CHAR_D          = $44
 
 CHARS_PER_LINE = SCREEN_WIDTH / 8
 LINES_PER_PAGE = SCREEN_HEIGHT / 8
 
-TERMINAL_CHARS_PER_LINE = 70
+TERMINAL_CHARS_PER_LINE = 76
 
 align 8
 console_buffer:
@@ -324,32 +350,32 @@ struc caret_t {
 align 8
 caret   caret_t
 
-TERM_CLS        equ $1b, "[2J"
-TERM_CURPOS11   equ $1b, "[1;1H"
-TERM_REVERSE    equ $1b, "[7m"
-TERM_NOATTR     equ $1b, "[m"
-TERM_UNDERLINE  equ $1b, "[4m"
-TERM_BLINK      equ $1b, "[5m"
-TERM_BOLD       equ $1b, "[1m"
-TERM_DELCHAR    equ $1b, "[1P"
+TERM_CLS        equ ESC_CHAR, "[2J"
+TERM_CURPOS11   equ ESC_CHAR, "[1;1H"
+TERM_REVERSE    equ ESC_CHAR, "[7m"
+TERM_NOATTR     equ ESC_CHAR, "[m"
+TERM_UNDERLINE  equ ESC_CHAR, "[4m"
+TERM_BLINK      equ ESC_CHAR, "[5m"
+TERM_BOLD       equ ESC_CHAR, "[1m"
+TERM_DELCHAR    equ ESC_CHAR, "[1P"
 TERM_NEWLINE    equ $0d, $0a
 TERM_NEWLINE2   equ $0d, $0a, $0d, $0a
-TERM_BLACK      equ $1b, "[30m"
-TERM_RED        equ $1b, "[31m"
-TERM_GREEN      equ $1b, "[32m"
-TERM_YELLOW     equ $1b, "[33m"
-TERM_BLUE       equ $1b, "[34m"
-TERM_MAGENTA    equ $1b, "[35m"
-TERM_CYAN       equ $1b, "[36m"
-TERM_WHITE      equ $1b, "[37m"
-TERM_BG_BLACK   equ $1b, "[40m"
-TERM_BG_RED     equ $1b, "[41m"
-TERM_BG_GREEN   equ $1b, "[42m"
-TERM_BG_YELLOW  equ $1b, "[43m"
-TERM_BG_BLUE    equ $1b, "[44m"
-TERM_BG_MAGENTA equ $1b, "[45m"
-TERM_BG_CYAN    equ $1b, "[46m"
-TERM_BG_WHITE   equ $1b, "[47m"
+TERM_BLACK      equ ESC_CHAR, "[30m"
+TERM_RED        equ ESC_CHAR, "[31m"
+TERM_GREEN      equ ESC_CHAR, "[32m"
+TERM_YELLOW     equ ESC_CHAR, "[33m"
+TERM_BLUE       equ ESC_CHAR, "[34m"
+TERM_MAGENTA    equ ESC_CHAR, "[35m"
+TERM_CYAN       equ ESC_CHAR, "[36m"
+TERM_WHITE      equ ESC_CHAR, "[37m"
+TERM_BG_BLACK   equ ESC_CHAR, "[40m"
+TERM_BG_RED     equ ESC_CHAR, "[41m"
+TERM_BG_GREEN   equ ESC_CHAR, "[42m"
+TERM_BG_YELLOW  equ ESC_CHAR, "[43m"
+TERM_BG_BLUE    equ ESC_CHAR, "[44m"
+TERM_BG_MAGENTA equ ESC_CHAR, "[45m"
+TERM_BG_CYAN    equ ESC_CHAR, "[46m"
+TERM_BG_WHITE   equ ESC_CHAR, "[47m"
 
 strdef  delete_char, TERM_DELCHAR
 
