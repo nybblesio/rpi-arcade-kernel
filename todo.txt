@@ -10,25 +10,30 @@ Admin
 
 Questions & Ponderings
 ----------------------
-
-
-Tasks
------
-
-- uart_init function
-
-- uart_getc function
-
-- uart_putc function
-
-- uart_putstr function
-
 - UBER IMPORTANT: implement 64-bit exception table vectors for IRQ & FIRQ at a minimum
     ; Set fake_vsync_isr=1 in config.txt and I will trigger the SMI interrupt (48) from my vsync callback.
     ; In your ISR, you should write 0 to SMICS (0x7E600000/0x20600000) to clear it.
 
+- what commands do we want?
+
+Tasks
+-----
+
+- FIX: joy_read is probably clocking the controller way too fast. Use ARM_TIMER for better control.
+
+- FINISH: find_command
+
+- refactor current token parser into function
+
+- implement parameter matching, calling next_token
+
+- implement base conversion from string to word
+
+
 KERNEL
 ------
+
+    **** update this section so it's more aligned with current implementation
 
  $40000000:     stack start
                 core0: $ffff
@@ -92,4 +97,7 @@ DONE
     - sound control RAM 256 bytes ---> core1 processor loop
 - create palette control "ram"
     1. almost done?
-
+- uart_init function
+- uart_getc function
+- uart_putc function
+- uart_putstr function

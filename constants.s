@@ -23,6 +23,8 @@
 ; for details about this license.
 ;
 ; =========================================================
+TRUE                    = 1
+FALSE                   = 0
 
 SCREEN_WIDTH            = 512
 SCREEN_HEIGHT           = 480

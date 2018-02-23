@@ -50,7 +50,6 @@ joy_read:
         mov     w1, GPIO_11
         str     w1, [x0, GPIO_GPSET0]
         delay   32
-        mov     w1, GPIO_11
         str     w1, [x0, GPIO_GPCLR0]
         delay   32
         mov     w1, 0
