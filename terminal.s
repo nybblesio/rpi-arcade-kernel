@@ -159,6 +159,7 @@ terminal_update:
    adr      x3, parse_buffer       
    mov      w4, 0
    pload    x5, w5, command_buffer_offset
+
 .char:  
    cmp      w4, w5
    b.eq     .done

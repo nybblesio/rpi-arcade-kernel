@@ -24,16 +24,39 @@
 ;
 ; =========================================================
 
+LEFT_MARGIN = 6
+RIGHT_MARGIN = 6
+TOP_MARGIN = 10
+BOTTOM_MARGIN = 10
+
+CHARS_PER_LINE = (SCREEN_WIDTH - (LEFT_MARGIN + RIGHT_MARGIN)) / FONT_WIDTH
+LINES_PER_PAGE = (SCREEN_HEIGHT - (TOP_MARGIN + BOTTOM_MARGIN)) / FONT_HEIGHT
+
 ; =========================================================
 ;
-; Structure Section
+; Macros Section
 ;
 ; =========================================================
-struc caret_t {
-        .y      db  0
-        .x      db  0
-        .color  db  $f
-        .show   db  0
+macro con_caret ypos, xpos, color {
+    sub     sp, sp, #32
+    mov     x20, ypos
+    mov     x21, xpos
+    stp     x20, x21, [sp]
+    mov     x20, color
+    mov     x21, 0
+    stp     x20, x21, [sp, #16]
+    bl      console_caret
+}
+
+macro con_write str, len, color {
+    sub     sp, sp, #32
+    mov     x20, str
+    mov     x21, len
+    stp     x20, x21, [sp]
+    mov     x20, color
+    mov     x21, 0
+    stp     x20, x21, [sp, #16]
+    bl      console_write
 }
 
 ; =========================================================
@@ -43,17 +66,107 @@ struc caret_t {
 ; =========================================================
 align 4
 console_buffer:
-        db  (LINES_PER_PAGE * CHARS_PER_LINE) * 2 dup (0, 4)
+    db  (LINES_PER_PAGE * CHARS_PER_LINE) * 2 dup (CHAR_SPACE, $0f)
 
 align 4
 con_line_buffer:
-        db CHARS_PER_LINE dup (0)
+    db CHARS_PER_LINE dup ('*')
 
-align 4        
-con_line_buffer_offset: db  0
+align 4
+caret_y:        db  0
+caret_x:        db  0
+caret_color:    db  $f
+caret_show:     db  0
 
-align 8
-caret   caret_t
+strdef con_welcome_str, "Arcade Kernel Kit, v0.1"
+
+align 16
+
+; =========================================================
+;
+; console_welcome
+;
+; stack:
+;   (none)
+;   
+; registers:
+;   (none)
+;
+; =========================================================
+console_welcome:
+    sub         sp, sp, #16
+    stp         x0, x30, [sp]
+    con_caret   0, 0, $0f
+    adr         x0, con_welcome_str
+    ldr         x1, [x0], 4
+    con_write   x0, x1, $0f
+    ldp         x0, x30, [sp]
+    add         sp, sp, #16
+    ret
+
+; =========================================================
+;
+; console_caret
+;
+; stack:
+;   y pos
+;   x pos
+;   color
+;   pad
+;
+; registers:
+;   (none)
+;
+; =========================================================
+console_caret:
+    sub         sp, sp, #16
+    stp         x0, x30, [sp]
+    ldp         x1, x2, [sp, #16]
+    ldp         x3, x4, [sp, #32]
+    pstoreb     x0, w1, caret_y
+    pstoreb     x0, w2, caret_x
+    pstoreb     x0, w3, caret_color
+    ldp         x0, x30, [sp]
+    add         sp, sp, #48
+    ret
+    
+; =========================================================
+;
+; console_write
+;
+; stack:
+;   str_ptr
+;   len
+;   color
+;   pad
+;
+; registers:
+;   (none)
+;
+; =========================================================
+console_write:
+    sub         sp, sp, #16
+    stp         x0, x30, [sp]
+    ldp         x6, x7, [sp, #16]
+    ldp         x8, x9, [sp, #32]
+    ploadb      x0, w1, caret_y
+    ploadb      x0, w2, caret_x
+    lsl         w11, w2, 1
+    mov         w3, CHARS_PER_LINE * 2
+    madd        w4, w3, w1, w11
+    adr         x5, console_buffer
+    add         w5, w5, w4
+.loop:
+    ldrb        w10, [x6], 1
+    strb        w10, [x5], 1
+    strb        w8, [x5], 1
+    add         w2, w2, 1
+    subs        w7, w7, 1
+    b.ne        .loop
+    pstoreb     x0, w2, caret_x
+    ldp         x0, x30, [sp]
+    add         sp, sp, #48
+    ret
 
 ; =========================================================
 ;
@@ -67,34 +180,42 @@ caret   caret_t
 ;
 ; =========================================================
 console_draw:
-        sub     sp, sp, #16
-        stp     x0, x30, [sp]
-
-        lbb
-
-;        adr     x10, console_buffer
-;        mov     w1, 0               ; y position
-;        mov     w2, 0               ; x position
-;        mov     w16, LINES_PER_PAGE 
-;.row:   adr     x3, line_buffer
-;        adr     x5, nitram_micro_font
-;        mov     w4, 0
-;        mov     w15, 0              ; last color
-;        mov     w11, CHARS_PER_LINE
-;.char:  ldrb    w13, [x10], 1       ; character
-;        ldrb    w14, [x10], 1       ; color
-;        cmp     w14, w15
-;        b.ne    .span
-;.span:  mov     w15, w14
-;        bl      draw_string
-;        adr     x3, line_buffer
-;        mov     w4, 0
-;        subs    w11, w11, 1
-;        b.ne    .char
-;        add     w1, w1, FONT_HEIGHT + 1
-;        subs    w16, w16, 1
-;        b.ne    .loop
-
-        ldp     x0, x30, [sp]
-        add     sp, sp, #16
-        ret
+    sub         sp, sp, #16
+    stp         x0, x30, [sp]
+    lbb
+    adr         x1, console_buffer
+    mov         w2, TOP_MARGIN      ; draw y position 
+    mov         w3, LEFT_MARGIN     ;      x position
+    mov         w4, LINES_PER_PAGE  ; number of lines to render
+    adr         x5, con_line_buffer
+.row:
+    mov         x11, x5
+    mov         w6, 0               ; last active color
+    mov         w7, CHARS_PER_LINE
+.char:
+    ldrb        w9, [x1], 1         ; ascii
+    ldrb        w10, [x1], 1        ; color index
+    ;cbnz        w6, .check
+    ;mov         w6, w10
+    ;b           .next
+;.check:
+;    cmp         w10, w6
+;    b.ne        .draw
+.next:    
+    strb        w9, [x11], 1
+    subs        w7, w7, 1    
+    b.ne        .char
+.draw:
+    sub         w12, w11, w5
+    ;string      x2, x3, x5, x12, x6 
+    ;mov         w6, w10
+    ;add         w3, w3, w12
+    ;mov         x11, x5
+    ;cbnz        w7, .next
+    add         w2, w2, 1
+    mov         w3, LEFT_MARGIN
+    subs        w4, w4, 1
+    b.ne        .row
+    ldp         x0, x30, [sp]
+    add         sp, sp, #16
+    ret

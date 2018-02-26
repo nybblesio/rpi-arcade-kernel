@@ -27,7 +27,7 @@
 FONT_WIDTH  = 5
 FONT_HEIGHT = 5
 
-align 8
+align 4
 nitram_micro_font:
 	db 000h, 000h, 000h, 000h, 000h
 	db 00ah, 000h, 004h, 011h, 00eh
@@ -285,3 +285,5 @@ nitram_micro_font:
 	db 000h, 000h, 000h, 000h, 000h
 	db 000h, 000h, 000h, 000h, 000h
 	db 000h, 000h, 000h, 000h, 000h
+
+align 4	

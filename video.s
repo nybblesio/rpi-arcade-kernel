@@ -30,10 +30,9 @@
 ;
 ; =========================================================
 macro lbb {
-        adr     x1, frame_buffer.data1
-        ldr     w0, [x1]
-        ldr     w1, page
-        ldr     w2, page_bytes
+        pload   x0, w0, frame_buffer.data1
+        pload   x1, w1, page
+        pload   x2, w2, page_bytes
         madd    w0, w1, w2, w0
 }
 
@@ -44,12 +43,16 @@ macro clear color {
 }
 
 macro string ypos, xpos, str, len, color {
-        mov     w29, w0
-        mov     w1, ypos
-        mov     w2, xpos
-        adr     w4, str
-        mov     w5, len
-        mov     w6, color
+        sub     sp, sp, #48
+        mov     x20, ypos
+        mov     x21, xpos
+        stp     x20, x21, [sp]
+        mov     x20, str
+        mov     x21, len
+        stp     x20, x21, [sp, #16]
+        mov     x20, color
+        mov     x21, 0
+        stp     x20, x21, [sp, #32]
         bl      draw_string
 }
 
@@ -111,8 +114,8 @@ set_virtual_offset_commands:
 set_virtual_offset_commands_end:
 
 align 8
-page        dw  1
-page_bytes  dw  SCREEN_WIDTH * SCREEN_HEIGHT
+page:       dw  1
+page_bytes: dw  SCREEN_WIDTH * SCREEN_HEIGHT
 
 ; =========================================================
 ;
@@ -287,47 +290,65 @@ clear_screen:
 ;
 ; draw_string
 ;
-; stack frame: 
-;   (none)
+; stack frame:
+;  
+;   y position
+;   x position
+;   pointer to string
+;   string length
+;   color
+;   pad
 ;
 ; registers:
-;   w1 y position
-;   w2 x position
-;   w3 pointer to string
-;   w4 string length
-;   w5 pointer to font bitmap
-;   w6 color
-;   w29 page buffer
-;
-;   w20 scratch register
-;   w21 pointer to font bitmap start
-;   w22 size of font glyph in bytes
-;   w23 font height counter
-;   w24 offset into character glyph
+;   w0 has back buffer pointer  
 ;
 ; =========================================================
 draw_string:
-        mov     w20, SCREEN_WIDTH
-        madd    w20, w20, w1, w2
-        add     w29, w29, w20
-        mov     w26, w29
-        mov     w21, w5
-        mov     w22, FONT_WIDTH * FONT_HEIGHT
-.char:  ldrb    w20, [x3], 1
-        madd    w24, w20, w22, w21
-        mov     w23, FONT_HEIGHT
-.row:   ldrb    w25, [x24], 1
-        mov     w20, 00000000_00000000_00000000_00010000b
-.pixel: tst     w25, w20
+        sub     sp, sp, #128
+        stp     x0, x30, [sp]
+        stp     x1, x2, [sp, #16]
+        stp     x3, x4, [sp, #32]
+        stp     x5, x6, [sp, #48]
+        stp     x7, x8, [sp, #64]
+        stp     x9, x10, [sp, #80]
+        stp     x11, x12, [sp, #96]
+        stp     x13, x14, [sp, #112]
+        ldp     x1, x2, [sp, #128]   ; y, x
+        ldp     x3, x4, [sp, #144]   ; str_ptr, len
+        ldp     x13, x14, [sp, #160] ; color, pad
+
+        mov     w5, SCREEN_WIDTH
+        madd    w5, w5, w1, w2
+        add     w0, w0, w5
+        mov     w6, w0
+        adr     x5, nitram_micro_font
+        mov     w7, FONT_WIDTH * FONT_HEIGHT
+.char:  ldrb    w8, [x3], 1
+        madd    w9, w8, w7, w5
+        mov     w10, FONT_HEIGHT
+.row:   ldrb    w11, [x9], 1
+        mov     w12, 00000000_00000000_00000000_00010000b
+.pixel: ands    w11, w11, w12
         b.eq    .next
-        strb    w6, [x29], 1
-.next:  lsr     w20, w20, 1
-        cbnz    w20, .pixel
-        add     w29, w29, SCREEN_WIDTH - FONT_WIDTH
-        subs    w23, w23, 1
+        strb    x13, [x0]
+.next:  add     x0, x0, 1
+        lsr     w12, w12, 1
+        cbnz    w12, .pixel
+        add     x0, x0, SCREEN_WIDTH - FONT_WIDTH
+        subs    w10, w10, 1
         b.ne    .row
-        add     w26, w26, FONT_WIDTH + 1
-        mov     w29, w26
+        add     w6, w6, FONT_WIDTH + 1
+        mov     w0, w6
         subs    w4, w4, 1
         b.ne    .char
+
+        ldp     x0, x30, [sp]
+        ldp     x1, x2, [sp, #16]
+        ldp     x3, x4, [sp, #32]
+        ldp     x5, x6, [sp, #48]
+        ldp     x7, x8, [sp, #64]
+        ldp     x9, x10, [sp, #80]
+        ldp     x11, x12, [sp, #96]
+        ldp     x13, x14, [sp, #112]
+        add     sp, sp, #176
         ret
