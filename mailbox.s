@@ -30,24 +30,24 @@
 ;
 ; =========================================================
 macro b2p reg {
-         and     reg, reg, $3fffffff
+     and        reg, reg, $3fffffff
 }
 
 struc mail_command_t tag*, size, data1, data2 {
-        .tag dw  tag
+    .tag dw  tag
 
-        if ~size eq
-                .size dw size
-                .indicator  dw  0
-        end if
+    if ~size eq
+        .size       dw size
+        .indicator  dw  0
+    end if
 
-        if ~data1 eq
-                .data1 dw data1
-        end if
+    if ~data1 eq
+        .data1 dw data1
+    end if
 
-        if ~data2 eq
-                .data2 dw data2
-        end if
+    if ~data2 eq
+        .data2 dw data2
+    end if
 }
 
 ; =========================================================
@@ -64,11 +64,16 @@ struc mail_command_t tag*, size, data1, data2 {
 ;
 ; =========================================================
 wait_for_mailbox_write:
-        pload   x1, w1, mail_base
-.loop:  ldr     w2, [x1, MAIL_STATUS]
-        ands    w2, w2, MAIL_FULL
-        b.ne    .loop
-        ret
+    sub         sp, sp, #16
+    stp         x0, x30, [sp]
+    pload       x1, w1, mail_base
+.loop:  
+    ldr         w2, [x1, MAIL_STATUS]
+    ands        w2, w2, MAIL_FULL
+    b.ne        .loop
+    ldp         x0, x30, [sp]
+    add         sp, sp, #16
+    ret
 
 ; =========================================================
 ;
@@ -84,12 +89,17 @@ wait_for_mailbox_write:
 ;
 ; =========================================================
 wait_for_mailbox_ready:
-        pload   x1, w1, mail_base
-.loop:  ldr     w2, [x1, MAIL_STATUS]
-        ands    w2, w2, MAIL_EMPTY
-        b.ne    .loop
-        ldr     w2, [x1, MAIL_READ]
-        ret
+    sub         sp, sp, #16
+    stp         x0, x30, [sp]
+    pload       x1, w1, mail_base
+.loop:  
+    ldr         w2, [x1, MAIL_STATUS]
+    ands        w2, w2, MAIL_EMPTY
+    b.ne        .loop
+    ldr         w2, [x1, MAIL_READ]
+    ldp         x0, x30, [sp]
+    add         sp, sp, #16
+    ret
 
 ; =========================================================
 ;
@@ -103,13 +113,13 @@ wait_for_mailbox_ready:
 ;
 ; =========================================================
 write_mailbox:
-        sub     sp, sp, #16
-        stp     x0, x30, [sp]
-        bl      wait_for_mailbox_write
-        pload   x1, w1, mail_base
-        add     w0, w0, MAIL_TAGS
-        str     w0, [x1, MAIL_WRITE]
-        bl      wait_for_mailbox_ready
-        ldp     x0, x30, [sp]
-        add     sp, sp, #16
-        ret    
+    sub         sp, sp, #16
+    stp         x0, x30, [sp]
+    bl          wait_for_mailbox_write
+    pload       x1, w1, mail_base
+    add         w0, w0, MAIL_TAGS
+    str         w0, [x1, MAIL_WRITE]
+    bl          wait_for_mailbox_ready
+    ldp         x0, x30, [sp]
+    add         sp, sp, #16
+    ret    

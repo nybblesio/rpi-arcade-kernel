@@ -24,16 +24,13 @@
 ;
 ; =========================================================
 
-ARM_TIMER_CTL = $b408
-ARM_TIMER_CNT = $b420
-
 ; =========================================================
 ;
 ; Data Section
 ;
 ; =========================================================
-timer_settings1 dw  $f90000
-timer_settings2 dw  $f90200
+timer_settings1 dw  $00f90000
+timer_settings2 dw  $00f90200
 
 ; =========================================================
 ;
@@ -43,14 +40,12 @@ timer_settings2 dw  $f90200
 ;   (none)
 ;
 ; registers:
-;   x1 address to timer control register
-;   w20 return tick value
+;   w0 return tick value
 ;
 ; =========================================================
 timer_tick:
-    mov         x1, ARM_TIMER_CNT
-    orr         x1, x1, PERIPHERAL_BASE
-    ldr         w20, [x1]
+    pload       x0, w0, arm_timer_counter
+    ldr         w0, [x0]
     ret
 
 ; =========================================================
@@ -61,16 +56,15 @@ timer_tick:
 ;   (none)
 ;
 ; registers:
-;   x1 address to timer control register
-;   w20 scratch register
+;   w0 arm timer controller address
+;   w1 timer settings 1 & 2
 ;
 ; =========================================================
 timer_init:
-    mov         x1, ARM_TIMER_CTL
-    orr         x1, x1, PERIPHERAL_BASE
-    mov         w20, timer_settings1
-    str         w20, [x1]
-    mov         w20, timer_settings2
-    str         w20, [x1]
+    pload       x0, w0, arm_timer_controller
+    pload       x1, w1, timer_settings1
+    str         w1, [x0]
+    pload       x1, w1, timer_settings2
+    str         w1, [x0]
     ret
 

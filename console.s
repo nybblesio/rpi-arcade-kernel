@@ -76,7 +76,7 @@ align 4
 caret_y:        db  0
 caret_x:        db  0
 caret_color:    db  $f
-caret_show:     db  0
+caret_show:     db  1
 
 strdef con_title_str,     "Arcade Kernel Kit, v0.1"
 strdef con_copyright_str, "Copyright (C) 2018 Jeff Panici. All Rights Reserved."
@@ -85,6 +85,49 @@ strdef con_license2_str,  "licensed"
 strdef con_license3_str,  " under the MIT license."
 
 align 16
+
+; =========================================================
+;
+; console_welcome
+;
+; stack:
+;   (none)
+;   
+; registers:
+;   (none)
+;
+; =========================================================
+caret_draw:
+    sub         sp, sp, #16
+    stp         x0, x30, [sp]
+    ploadb      x2, w1, caret_show
+    cbz         w1, .skip
+    mov         w1, 0
+    pstoreb     x2, w1, caret_show
+    sub         sp, sp, #48
+    ploadb      x1, w1, caret_y
+    mov         w2, FONT_HEIGHT + 1
+    mul         w1, w1, w2
+    add         w1, w1, TOP_MARGIN
+    ploadb      x2, w2, caret_x
+    mov         w3, FONT_WIDTH + 1
+    mul         w2, w2, w3
+    add         w2, w2, LEFT_MARGIN
+    stp         x1, x2, [sp]
+    mov         x1, 6
+    stp         x1, x1, [sp, #16]
+    ploadb      x1, w1, caret_color
+    mov         x2, 0
+    stp         x1, x2, [sp, #32]
+    bl          draw_filled_rect
+    b           .done
+.skip:
+    mov         w1, 1
+    pstoreb     x2, w1, caret_show
+.done:    
+    ldp         x0, x30, [sp]
+    add         sp, sp, #16
+    ret
 
 ; =========================================================
 ;
@@ -202,7 +245,6 @@ console_write:
 console_draw:
     sub         sp, sp, #16
     stp         x0, x30, [sp]
-    lbb
     adr         x1, console_buffer
     mov         w2, TOP_MARGIN      ; draw y position 
     mov         w3, LEFT_MARGIN     ;      x position

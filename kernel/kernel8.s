@@ -48,6 +48,8 @@ include 'terminal.s'
 include 'command.s'
 include 'console.s'
 
+next_timeout:  dw  0
+
 align 16
 
 ; =========================================================
@@ -97,11 +99,28 @@ kernel_core:
     bl          cmd_reset_func
     bl          console_welcome
 
+    bl          timer_tick
+    pload       x1, w1, frame_timeout
+    add         w0, w0, w1
+    pstore      x1, w0, next_timeout
+
 .loop:
-    ;bl         joy_read
     bl          terminal_update
+    bl          timer_tick
+    pload       x1, w1, next_timeout
+    cmp         w0, w1
+    b.cc        .skip
+    ;bl         joy_read
+    page_ld
+    bl          page_clear
     bl          console_draw
+    bl          caret_draw
     bl          page_swap
+    bl          timer_tick
+    pload       x1, w1, frame_timeout
+    add         w0, w0, w1
+    pstore      x1, w0, next_timeout
+.skip:    
     b           .loop
 
 ; =========================================================

@@ -64,8 +64,6 @@ tick_vector:        dw  game_tick
 ;
 ; =========================================================
 draw_tile:        
-        lbb
-
         ldp     x2, x3, [sp]
         ldp     x5, x4, [sp, #16]
         mov     w1, TILE_BYTES
@@ -126,7 +124,6 @@ macro tile ypos, xpos, tile, pal {
 ;
 ; =========================================================
 draw_stamp:        
-        lbb
         ldp     x2, x3, [sp]
         mov     w1, SCREEN_WIDTH
         mul     w1, w1, w2
