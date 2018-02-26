@@ -24,13 +24,13 @@
 ;
 ; =========================================================
 
-LEFT_MARGIN = 6
-RIGHT_MARGIN = 6
-TOP_MARGIN = 10
-BOTTOM_MARGIN = 10
+LEFT_MARGIN = 7
+RIGHT_MARGIN = 7
+TOP_MARGIN = 12
+BOTTOM_MARGIN = 12
 
-CHARS_PER_LINE = (SCREEN_WIDTH - (LEFT_MARGIN + RIGHT_MARGIN)) / FONT_WIDTH
-LINES_PER_PAGE = (SCREEN_HEIGHT - (TOP_MARGIN + BOTTOM_MARGIN)) / FONT_HEIGHT
+CHARS_PER_LINE = (SCREEN_WIDTH - (LEFT_MARGIN + RIGHT_MARGIN)) / (FONT_WIDTH + 1)
+LINES_PER_PAGE = (SCREEN_HEIGHT - (TOP_MARGIN + BOTTOM_MARGIN)) / (FONT_HEIGHT + 1)
 
 ; =========================================================
 ;
@@ -78,7 +78,11 @@ caret_x:        db  0
 caret_color:    db  $f
 caret_show:     db  0
 
-strdef con_welcome_str, "Arcade Kernel Kit, v0.1"
+strdef con_title_str,     "Arcade Kernel Kit, v0.1"
+strdef con_copyright_str, "Copyright (C) 2018 Jeff Panici. All Rights Reserved."
+strdef con_license1_str,  "This software is "
+strdef con_license2_str,  "licensed"
+strdef con_license3_str,  " under the MIT license."
 
 align 16
 
@@ -97,9 +101,24 @@ console_welcome:
     sub         sp, sp, #16
     stp         x0, x30, [sp]
     con_caret   0, 0, $0f
-    adr         x0, con_welcome_str
-    ldr         x1, [x0], 4
+    adr         x0, con_title_str
+    ldr         w1, [x0], 4
     con_write   x0, x1, $0f
+    con_caret   1, 0, $0f
+    adr         x0, con_copyright_str
+    ldr         w1, [x0], 4
+    con_write   x0, x1, $0f
+    con_caret   2, 0, $0f
+    adr         x0, con_license1_str
+    ldr         w1, [x0], 4
+    con_write   x0, x1, $0f
+    adr         x0, con_license2_str
+    ldr         w1, [x0], 4
+    con_write   x0, x1, $03
+    adr         x0, con_license3_str
+    ldr         w1, [x0], 4
+    con_write   x0, x1, $0f
+    con_caret   4, 0, $0f
     ldp         x0, x30, [sp]
     add         sp, sp, #16
     ret
@@ -147,23 +166,24 @@ console_caret:
 console_write:
     sub         sp, sp, #16
     stp         x0, x30, [sp]
-    ldp         x6, x7, [sp, #16]
-    ldp         x8, x9, [sp, #32]
-    ploadb      x0, w1, caret_y
-    ploadb      x0, w2, caret_x
-    lsl         w11, w2, 1
-    mov         w3, CHARS_PER_LINE * 2
-    madd        w4, w3, w1, w11
-    adr         x5, console_buffer
-    add         w5, w5, w4
+    ldp         x0, x1, [sp, #16]   ; str_ptr, len
+    ldp         x2, x3, [sp, #32]   ; color, pad
+    ploadb      x4, w4, caret_y
+    ploadb      x5, w5, caret_x
+    mov         w6, CHARS_PER_LINE
+    madd        w6, w6, w4, w5
+    mov         w13, 2
+    mul         w6, w6, w13
+    adr         x7, console_buffer
+    add         w7, w7, w6
 .loop:
-    ldrb        w10, [x6], 1
-    strb        w10, [x5], 1
-    strb        w8, [x5], 1
-    add         w2, w2, 1
-    subs        w7, w7, 1
+    ldrb        w10, [x0], 1
+    strb        w10, [x7], 1
+    strb        w2, [x7], 1
+    add         w5, w5, 1
+    subs        w1, w1, 1
     b.ne        .loop
-    pstoreb     x0, w2, caret_x
+    pstoreb     x0, w5, caret_x
     ldp         x0, x30, [sp]
     add         sp, sp, #48
     ret
@@ -187,32 +207,40 @@ console_draw:
     mov         w2, TOP_MARGIN      ; draw y position 
     mov         w3, LEFT_MARGIN     ;      x position
     mov         w4, LINES_PER_PAGE  ; number of lines to render
+    mov         w13, FONT_WIDTH + 1
     adr         x5, con_line_buffer
 .row:
     mov         x11, x5
     mov         w6, 0               ; last active color
     mov         w7, CHARS_PER_LINE
+    mov         w14, 0
 .char:
     ldrb        w9, [x1], 1         ; ascii
     ldrb        w10, [x1], 1        ; color index
-    ;cbnz        w6, .check
-    ;mov         w6, w10
-    ;b           .next
-;.check:
-;    cmp         w10, w6
-;    b.ne        .draw
+    cmp         w9, CHAR_SPACE
+    b.eq        .skip
+    mov         w14, 1
+.skip:    
+    cbnz        w6, .check
+    mov         w6, w10
+    b           .next
+.check:
+    cmp         w10, w6
+    b.ne        .draw
 .next:    
     strb        w9, [x11], 1
     subs        w7, w7, 1    
     b.ne        .char
 .draw:
     sub         w12, w11, w5
-    ;string      x2, x3, x5, x12, x6 
-    ;mov         w6, w10
-    ;add         w3, w3, w12
-    ;mov         x11, x5
-    ;cbnz        w7, .next
-    add         w2, w2, 1
+    cbz         w14, .no_draw
+    string      x2, x3, x5, x12, x6 
+.no_draw:    
+    mov         w6, w10
+    madd        w3, w12, w13, w3
+    mov         x11, x5
+    cbnz        w7, .next
+    add         w2, w2, FONT_HEIGHT + 1
     mov         w3, LEFT_MARGIN
     subs        w4, w4, 1
     b.ne        .row

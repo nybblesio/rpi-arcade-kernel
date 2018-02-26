@@ -322,13 +322,13 @@ draw_string:
         add     w0, w0, w5
         mov     w6, w0
         adr     x5, nitram_micro_font
-        mov     w7, FONT_WIDTH * FONT_HEIGHT
+        mov     w7, FONT_HEIGHT
 .char:  ldrb    w8, [x3], 1
         madd    w9, w8, w7, w5
         mov     w10, FONT_HEIGHT
 .row:   ldrb    w11, [x9], 1
         mov     w12, 00000000_00000000_00000000_00010000b
-.pixel: ands    w11, w11, w12
+.pixel: ands    w14, w11, w12
         b.eq    .next
         strb    x13, [x0]
 .next:  add     x0, x0, 1

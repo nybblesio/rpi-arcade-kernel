@@ -95,13 +95,12 @@ kernel_core:
     bl          joy_init
     bl          video_init
     bl          cmd_reset_func
-    ;bl          console_welcome
+    bl          console_welcome
 
 .loop:
     ;bl         joy_read
     bl          terminal_update
-    ;bl          console_draw
-    string      10, 10, con_welcome_str + 4, 22, $0f
+    bl          console_draw
     bl          page_swap
     b           .loop
 
