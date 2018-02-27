@@ -48,14 +48,6 @@ macro con_caret ypos, xpos, color {
     bl          console_caret
 }
 
-macro con_caret_nl {
-    ploadb      x20, w20, caret_y
-    add         w20, w20, 1
-    pstoreb     x21, w20, caret_y
-    mov         w20, 0
-    pstoreb     x21, w20, caret_x
-}
-
 macro con_write str, len, color {
     sub         sp, sp, #32
     mov         x20, str
@@ -69,14 +61,14 @@ macro con_write str, len, color {
 
 macro log str, len, color {
     con_write   str, len, color
-    con_caret_nl
+    bl          console_caret_nl
 }
 
 macro log_reg reg, name, color {
     con_write   name, REG_LABEL_LEN, color
-    str_hex8    reg, str_number_buffer + 1
-    con_write   str_number_buffer, 9, color
-    con_caret_nl
+    str_hex8    reg, number_buffer + 1
+    con_write   number_buffer, 9, color
+    bl          console_caret_nl
 }
 
 macro log_label label, name, color {
@@ -101,7 +93,8 @@ caret_x:        db  0
 caret_color:    db  $f
 caret_show:     db  1
 
-str_number_buffer:  db  '$', 8 dup(CHAR_SPACE)
+str_number_buffer:  dw  9
+number_buffer:      db  '$', 8 dup(CHAR_SPACE)
 
 DEBUG_HERE_LEN = 9
 debug_here1: db ">>> here1"
@@ -141,6 +134,9 @@ reg_w27: db "w27 = "
 reg_w28: db "w28 = "
 reg_w29: db "w29 = "
 reg_w30: db "w30 = "
+
+reg_joy00: db "j00 = "
+reg_joy01: db "j01 = "
 
 strdef con_title_str,     "Arcade Kernel Kit, v0.1"
 strdef con_copyright_str, "Copyright (C) 2018 Jeff Panici. All Rights Reserved."
@@ -256,6 +252,52 @@ console_welcome:
     bl          timer_start
     ldp         x0, x30, [sp]
     add         sp, sp, #16
+    ret
+
+; =========================================================
+;
+; console_caret_nl
+;
+; stack:
+;   (none)
+;
+; registers:
+;   (none)
+;
+; =========================================================
+console_caret_nl:
+    sub         sp, sp, #48
+    stp         x0, x30, [sp]
+    stp         x1, x2, [sp, #16]
+    stp         x3, x4, [sp, #32]
+    mov         w2, LINES_PER_PAGE
+    ploadb      x0, w0, caret_y
+    add         w0, w0, 1
+    cmp         w0, w2
+    b.lo        .done
+    adr         x3, console_buffer
+    mov         w4, CHARS_PER_LINE * 2
+    add         w2, w3, w4
+    mov         w4, ((LINES_PER_PAGE - 1) * CHARS_PER_LINE) * 2
+    copy        w2, w3, w4
+    add         w2, w3, w4
+    mov         w1, $0f
+    mov         w3, CHAR_SPACE
+    mov         w4, CHARS_PER_LINE
+.loop:
+    strb        w3, [x2], 1 
+    strb        w1, [x2], 1
+    subs        w4, w4, 1
+    b.ne        .loop
+    mov         w0, LINES_PER_PAGE - 1
+.done:    
+    pstoreb     x1, w0, caret_y
+    mov         w0, 0
+    pstoreb     x1, w0, caret_x
+    ldp         x0, x30, [sp]
+    ldp         x1, x2, [sp, #16]
+    ldp         x3, x4, [sp, #32]
+    add         sp, sp, #48
     ret
 
 ; =========================================================

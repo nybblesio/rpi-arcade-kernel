@@ -41,6 +41,14 @@ TIMER_CALLBACK = 16
 ; Macro Section
 ;
 ; =========================================================
+macro delay duration {
+    sub         sp, sp, 16
+    mov         w20, duration
+    mov         w21, 0
+    stp         x20, x21, [sp]
+    bl          timer_wait
+}
+
 macro timerdef lbl, id, duration, callback {
     align 4
     label lbl
@@ -63,6 +71,37 @@ timer_settings2 dw  $00f90200
 
 timers:
     dw  TIMER_COUNT dup(0)
+
+; =========================================================
+;
+; timer_wait
+;
+; stack:
+;   wait (in cycles per second)
+;   pad
+;
+; registers:
+;   (none)
+;
+; =========================================================
+timer_wait:
+    sub         sp, sp, #32
+    stp         x0, x30, [sp]
+    stp         x1, x2, [sp, #16]
+    ldp         x1, x2, [sp, #32]
+    pload       x0, w0, arm_timer_counter
+    ldr         w2, [x0]
+    add         w2, w2, w1
+.loop:
+    ldr         w1, [x0]
+    cmp         w1, w2
+    b.hi        .done
+    b           .loop
+.done:
+    ldp         x0, x30, [sp]
+    ldp         x1, x2, [sp, #16]
+    add         sp, sp, #48
+    ret
 
 ; =========================================================
 ;

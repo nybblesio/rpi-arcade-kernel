@@ -34,18 +34,18 @@ org     $0000
 
 include 'constants.s'
 include 'macros.s'
+include 'font.s'
 include 'string.s'
 include 'pool.s'
-include 'timer.s'
 include 'dma.s'
-include 'mailbox.s'
-include 'uart.s'
-include 'joy.s'
-include 'font.s'
 include 'util.s'
+include 'uart.s'
+include 'timer.s'
+include 'mailbox.s'
 include 'video.s'
-include 'interrupt.s'
 include 'console.s'
+include 'joy.s'
+include 'interrupt.s'
 include 'command.s'
 include 'terminal.s'
 
@@ -100,9 +100,9 @@ kernel_core:
     bl          console_welcome
 
 .loop:
+    bl          joy_read
     bl          timer_update
     bl          term_update
-    ;bl         joy_read
     page_ld
     bl          page_clear
     bl          console_draw

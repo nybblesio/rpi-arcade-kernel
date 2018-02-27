@@ -133,7 +133,8 @@ JOY_B      = 1000000000000000b
 ;
 ; =========================================================
 align 4
-joy_state:  dw  0
+joy0_state: dw 0
+joy1_state: dw 0
 
 ; =========================================================
 ;
@@ -147,31 +148,39 @@ joy_state:  dw  0
 ;
 ; =========================================================
 joy_read:
-    pload   x0, w0, gpio_base
-    mov     w1, GPIO_11
-    str     w1, [x0, GPIO_GPSET0]
-    delay   32
-    str     w1, [x0, GPIO_GPCLR0]
-    delay   32
-    mov     w1, 0
-    mov     w2, 15
+    sub         sp, sp, #48
+    stp         x0, x30, [sp]
+    stp         x1, x2, [sp, #16]
+    stp         x3, x4, [sp, #32]
+    pload       x0, w0, gpio_base
+    mov         w1, GPIO_11
+    str         w1, [x0, GPIO_GPSET0]
+    delay       12
+    str         w1, [x0, GPIO_GPCLR0]
+    delay       12
+    mov         w1, 0
+    mov         w2, 15
 .loop:  
-    ldr     w3, [x0, GPIO_GPLEV0]
-    tst     w3, GPIO_4
-    b.ne    .clock
-    mov     w3, 1
-    lsl     w3, w3, w2
-    orr     w1, w1, w3
+    ldr         w3, [x0, GPIO_GPLEV0]
+    tst         w3, GPIO_4
+    b.ne        .clock
+    mov         w3, 1
+    lsl         w3, w3, w2
+    orr         w1, w1, w3
 .clock: 
-    mov     w3, GPIO_10
-    str     w3, [x0, GPIO_GPSET0]
-    delay   32
-    mov     w3, GPIO_10
-    str     w3, [x0, GPIO_GPCLR0]
-    delay   32
-    subs    w2, w2, 1
-    b.ge    .loop
-    pstore  x0, w1, joy_state
+    mov         w3, GPIO_10
+    str         w3, [x0, GPIO_GPSET0]
+    delay       12
+    str         w3, [x0, GPIO_GPCLR0]
+    delay       12
+    subs        w2, w2, 1
+    b.ne        .loop
+    pstore      x0, w1, joy0_state
+    ;log_reg     w1, reg_joy00, $08
+    ldp         x0, x30, [sp]
+    ldp         x1, x2, [sp, #16]
+    ldp         x3, x4, [sp, #32]
+    add         sp, sp, #48
     ret
 
 ; =========================================================
@@ -188,9 +197,19 @@ joy_read:
 ;   
 ; =========================================================
 joy_init:
-    pload   x0, w0, gpio_base
-    ldr     w1, [x0, GPIO_GPFSEL1]
-    mov     w2, GPIO_FSEL0_OUT + GPIO_FSEL1_OUT
-    orr     w1, w1, w2
-    str     w1, [x0, GPIO_GPFSEL1]
+    sub         sp, sp, #32
+    stp         x0, x30, [sp]
+    stp         x1, x2, [sp, #16]
+    pload       x0, w0, gpio_base
+    ldr         w1, [x0, GPIO_GPFSEL1]
+    mov         w2, GPIO_FSEL0_OUT + GPIO_FSEL1_OUT
+    orr         w1, w1, w2
+    str         w1, [x0, GPIO_GPFSEL1]
+    mov         w1, GPIO_11
+    str         w1, [x0, GPIO_GPCLR0]
+    mov         w1, GPIO_10
+    str         w1, [x0, GPIO_GPCLR0]
+    ldp         x0, x30, [sp]
+    ldp         x1, x2, [sp, #16]
+    add         sp, sp, #32
     ret

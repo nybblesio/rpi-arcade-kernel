@@ -107,6 +107,16 @@ commands:
         cmd_reset_func, \
         0
 
+    cmddef cmd_dump_joy0, "joy0", \
+        "Dump the state of joy controller 0.", \
+        cmd_joy0_func, \
+        0
+
+    cmddef cmd_dump_joy1, "joy1", \
+        "Dump the state of joy controller 1.", \
+        cmd_joy1_func, \
+        0
+
     cmddef cmd_dump_reg, "reg", \
         "Dump the value of the specified register.", \
         0, \
@@ -117,6 +127,52 @@ commands:
     dw          0
 
 align 16
+
+; =========================================================
+;
+; cmd_joy0_func
+;
+; stack:
+;   (none)
+;   
+; registers:
+;   (none)
+;
+; =========================================================
+cmd_joy0_func:
+    sub         sp, sp, #16
+    stp         x0, x30, [sp]
+    uart_str    joy0_state_label
+    pload       x0, w0, joy0_state
+    str_hex8    w0, number_buffer + 1
+    uart_str    str_number_buffer
+    uart_str    new_line 
+    ldp         x0, x30, [sp]
+    add         sp, sp, #16
+    ret
+
+; =========================================================
+;
+; cmd_joy1_func
+;
+; stack:
+;   (none)
+;   
+; registers:
+;   (none)
+;
+; =========================================================
+cmd_joy1_func:
+    sub         sp, sp, #16
+    stp         x0, x30, [sp]
+    uart_str    joy1_state_label
+    pload       x0, w0, joy1_state
+    str_hex8    w0, number_buffer + 1
+    uart_str    str_number_buffer
+    uart_str    new_line
+    ldp         x0, x30, [sp]
+    add         sp, sp, #16
+    ret
 
 ; =========================================================
 ;

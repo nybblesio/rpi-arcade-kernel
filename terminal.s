@@ -39,6 +39,8 @@ strdef  delete_char, TERM_DELCHAR
 
 strdef  clr_screen, TERM_CLS, TERM_CURPOS11
 
+strdef  new_line, TERM_NEWLINE
+
 strdef  kernel_title, TERM_REVERSE, \
     "                Arcade Kernel Kit, v0.1              ", \ 
     TERM_NOATTR, \
@@ -62,6 +64,9 @@ strdef  kernel_help, "Use the ", TERM_BOLD, TERM_UNDERLINE, "help", TERM_NOATTR,
 
 strdef  parse_error, TERM_BLINK, TERM_REVERSE, TERM_BOLD, " ERROR: ", TERM_NOATTR, \
    " Unable to parse command: "
+
+strdef  joy0_state_label, TERM_BOLD, " joy0_state = ", TERM_NOATTR
+strdef  joy1_state_label, TERM_BOLD, " joy1_state = ", TERM_NOATTR
 
 align 16        
 
@@ -103,14 +108,8 @@ term_welcome:
 term_prompt:
    sub      sp, sp, #16
    stp      x0, x30, [sp]
-   mov      w1, CHAR_SPACE
-   mov      w2, TERM_CHARS_PER_LINE
-   adr      x3, command_buffer
-   bl       fill_buffer
-   mov      w1, 0 
-   mov      w2, TOKEN_OFFSET_COUNT
-   adr      x3, token_offsets
-   bl       fill_buffer
+   fill     command_buffer, TERM_CHARS_PER_LINE, CHAR_SPACE
+   fill     token_offsets, TOKEN_OFFSET_COUNT, 0
    mov      w1, 0 
    pstore   x0, w1, command_buffer_offset
    uart_chr '>'

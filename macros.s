@@ -29,14 +29,6 @@
 ; Macros
 ;
 ; =========================================================
-macro delay cycles {
-    local       .loop
-    mov         w12, cycles
-.loop:  
-    subs        w12, w12, 1
-    b.ne        .loop        
-}
-
 macro strlist [params] {
     forward db  params
 }
