@@ -67,7 +67,7 @@ align 16
 
 ; =========================================================
 ;
-; send_welcome
+; term_welcome
 ;
 ; stack:
 ;   (none)
@@ -76,7 +76,7 @@ align 16
 ;   (none)
 ;
 ; =========================================================
-send_welcome:
+term_welcome:
    sub      sp, sp, #16
    stp      x0, x30, [sp]   
    uart_str clr_screen
@@ -91,7 +91,7 @@ send_welcome:
 
 ; =========================================================
 ;
-; new_prompt
+; term_prompt
 ;
 ; stack:
 ;   (none)
@@ -100,7 +100,7 @@ send_welcome:
 ;   (none)
 ;
 ; =========================================================
-new_prompt:
+term_prompt:
    sub      sp, sp, #16
    stp      x0, x30, [sp]
    mov      w1, CHAR_SPACE
@@ -121,7 +121,7 @@ new_prompt:
 
 ; =========================================================
 ;
-; terminal_update
+; term_update
 ;
 ; stack:
 ;   (none)
@@ -130,7 +130,7 @@ new_prompt:
 ;   (none)
 ;
 ; =========================================================
-terminal_update:
+term_update:
    sub      sp, sp, #16
    stp      x0, x30, [sp]
 
@@ -155,7 +155,7 @@ terminal_update:
    add      w3, w3, 1
    pstore   x2, w3, command_buffer_offset
 .echo:  
-   bl       uart_send
+   uart_chr w1
    b        .exit
 
 .return:
@@ -188,7 +188,7 @@ terminal_update:
    log_reg  w1, reg_w1, $0f
    cbz      w1, .err
    uart_chr LINEFEED_CHAR
-   ldr      w2, [x1]
+   ldr      w2, [x1, CMD_DEF_CALLBACK]
    cbz      w2, .reset
    log_reg  w2, reg_w2, $0f
    blr      x2
@@ -200,7 +200,7 @@ terminal_update:
    bl       command_error
 
 .reset: 
-   bl       new_prompt
+   bl       term_prompt
    b        .exit
 
 .back:  

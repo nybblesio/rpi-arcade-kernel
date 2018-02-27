@@ -36,17 +36,12 @@ F_PARAM_TYPE_STRING   = 00001000b
 
 TOKEN_OFFSET_COUNT    = 32
 
-CMD_DEF_SIZE = 0
-CMD_DEF_NAME_LEN = 4
-CMD_DEF_NAME = 8
-
-; added to length of start + name
-CMD_DEF_DESC_LEN = 4
-CMD_DEF_DESC = 8
-
-; added to length of start + name + desc
-CMD_DEF_CALLBACK = 4
-CMD_DEF_PARAM_COUNT = 8
+CMD_DEF_NAME_LEN      = 0
+CMD_DEF_NAME          = 1
+CMD_DEF_DESC_LEN      = 17
+CMD_DEF_DESC          = 18
+CMD_DEF_CALLBACK      = 248
+CMD_DEF_PARAM_COUNT   = 252
 
 ; =========================================================
 ;
@@ -57,32 +52,31 @@ macro parmdef lbl, name, type, required {
 align 4
 label lbl
     local   .end, .start
-    dw      .end - .start
+    db .end - .start
 .start:        
     db  name
 .end:
-    dw  type
+    db  29 - (.end - .start) dup (CHAR_SPACE)
+    db  type
     db  required
 }
 
-macro cmddef lbl, name, desc, func, param_count {
-    local   .def_end, .def_start
-    local   .name_end, .name_start
-    local   .desc_end, .desc_start
+macro cmddef lbl, name, desc, callback, param_count {
 label lbl
-.def_start:
-    dw      .def_end - .def_start       ; length of command definiton
-    dw      .name_end - .name_start     ; length of name string
-.name_start:        
-    db  name
+    db .name_end - .name
+.name:
+    db name
 .name_end:
-    dw      .desc_end - .desc_start     ; length of desc string
-.desc_start:        
+    db 16 - (.name_end - .name) dup(CHAR_SPACE)
+
+    db .desc_end - .desc
+.desc:
     db  desc
 .desc_end:
-    dw  func
+    db  230 - (.desc_end - .desc) dup(CHAR_SPACE)
+
+    dw  callback
     dw  param_count
-.def_end:    
 }
 
 ; =========================================================
@@ -139,7 +133,6 @@ cmd_clear_func:
     sub         sp, sp, #16
     stp         x0, x30, [sp]
     uart_str    clr_screen
-    bl          new_prompt
     ldp         x0, x30, [sp]
     add         sp, sp, #16
     ret
@@ -158,8 +151,7 @@ cmd_clear_func:
 cmd_reset_func:
     sub         sp, sp, #16
     stp         x0, x30, [sp]
-    bl          send_welcome
-    bl          new_prompt
+    bl          term_welcome
     ldp         x0, x30, [sp]
     add         sp, sp, #16
     ret
@@ -187,24 +179,21 @@ command_find:
     adr         x1, commands
     adr         x2, command_buffer
 .loop:
-    ldr         w3, [x1, CMD_DEF_SIZE]
+    ldrb        w3, [x1, CMD_DEF_NAME_LEN]
     cbz         w3, .notfound
-    ldr         w4, [x1, CMD_DEF_NAME_LEN]
     mov         w6, w1
-    mov         w5, w1
-    add         w5, w5, 8
-    ;sub         sp, sp, #32
-    ;stp         x5, x4, [sp]
-    ;stp         x2, x0, [sp, #16]
-    ;bl          string_eq
-    ;cbnz        w1, .done
+    add         w1, w1, 1
+    sub         sp, sp, #32
+    stp         x1, x3, [sp]
+    stp         x2, x0, [sp, #16]
+    bl          string_eq
+    cbnz        w1, .found
     mov         w1, w6
-    add         w1, w1, w3
-    b           .notfound
+    add         w1, w1, 256
+    b           .loop
 .found:
     mov         w1, w6
-    add         w1, w1, w3
-    sub         w1, w1, 8
+    b           .done
 .notfound:
     mov         w1, 0
 .done:    

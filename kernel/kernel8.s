@@ -96,11 +96,12 @@ kernel_core:
     bl          joy_init
     bl          video_init
     bl          cmd_reset_func
+    bl          term_prompt
     bl          console_welcome
 
 .loop:
     bl          timer_update
-    bl          terminal_update
+    bl          term_update
     ;bl         joy_read
     page_ld
     bl          page_clear

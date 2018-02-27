@@ -47,7 +47,10 @@ macro uart_hex value {
 }
 
 macro uart_chr char {
-    mov         w1, char
+    sub         sp, sp, #16
+    mov         w20, char
+    mov         w21, 0
+    stp         x20, x21, [sp]
     bl          uart_send
 }
 
@@ -148,17 +151,18 @@ uart_recv_block:
 ; uart_send
 ;
 ; stack:
-;   (none)
+;   character to send
+;   pad
 ;
 ; registers:
-;   w0 scratch register
-;   w1 character to send
-;   w2 scratch register
+;   (none)
 ;
 ; =========================================================
 uart_send:
-    sub         sp, sp, #16
+    sub         sp, sp, #32
     stp         x0, x30, [sp]
+    stp         x1, x2, [sp, #16]
+    ldp         x1, x0, [sp, #32]
     pload       x0, w0, aux_base
 .full:  
     ldr         w2, [x0, AUX_MU_LSR_REG]
@@ -168,7 +172,8 @@ uart_send:
 .ready: 
     str         w1, [x0, AUX_MU_IO_REG]
     ldp         x0, x30, [sp]
-    add         sp, sp, #16
+    ldp         x1, x2, [sp, #16]
+    add         sp, sp, #48
     ret
 
 ; =========================================================
