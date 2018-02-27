@@ -38,25 +38,48 @@ LINES_PER_PAGE = (SCREEN_HEIGHT - (TOP_MARGIN + BOTTOM_MARGIN)) / (FONT_HEIGHT +
 ;
 ; =========================================================
 macro con_caret ypos, xpos, color {
-    sub     sp, sp, #32
-    mov     x20, ypos
-    mov     x21, xpos
-    stp     x20, x21, [sp]
-    mov     x20, color
-    mov     x21, 0
-    stp     x20, x21, [sp, #16]
-    bl      console_caret
+    sub         sp, sp, #32
+    mov         x20, ypos
+    mov         x21, xpos
+    stp         x20, x21, [sp]
+    mov         x20, color
+    mov         x21, 0
+    stp         x20, x21, [sp, #16]
+    bl          console_caret
+}
+
+macro con_caret_nl {
+    ploadb      x20, w20, caret_y
+    add         w20, w20, 1
+    pstoreb     x21, w20, caret_y
+    mov         w20, 0
+    pstoreb     x21, w20, caret_x
 }
 
 macro con_write str, len, color {
-    sub     sp, sp, #32
-    mov     x20, str
-    mov     x21, len
-    stp     x20, x21, [sp]
-    mov     x20, color
-    mov     x21, 0
-    stp     x20, x21, [sp, #16]
-    bl      console_write
+    sub         sp, sp, #32
+    mov         x20, str
+    mov         x21, len
+    stp         x20, x21, [sp]
+    mov         x20, color
+    mov         x21, 0
+    stp         x20, x21, [sp, #16]
+    bl          console_write
+}
+
+macro log str, len, color {
+    con_write   str, len, color
+    con_caret_nl
+}
+
+macro log_reg reg, name, color {
+    con_write   name, REG_LABEL_LEN, color
+    str_hex8    reg, str_number_buffer + 1
+    con_write   str_number_buffer, 9, color
+    con_caret_nl
+}
+
+macro log_label label, name, color {
 }
 
 ; =========================================================
@@ -77,6 +100,47 @@ caret_y:        db  0
 caret_x:        db  0
 caret_color:    db  $f
 caret_show:     db  1
+
+str_number_buffer:  db  '$', 8 dup(CHAR_SPACE)
+
+DEBUG_HERE_LEN = 9
+debug_here1: db ">>> here1"
+debug_here2: db ">>> here2"
+debug_here3: db ">>> here3"
+debug_here4: db ">>> here4"
+
+REG_LABEL_LEN = 6
+reg_w0:  db "w0  = "
+reg_w1:  db "w1  = "
+reg_w2:  db "w2  = "
+reg_w3:  db "w3  = "
+reg_w4:  db "w4  = "
+reg_w5:  db "w5  = "
+reg_w6:  db "w6  = "
+reg_w7:  db "w7  = "
+reg_w8:  db "w8  = "
+reg_w9:  db "w9  = "
+reg_w10: db "w10 = "
+reg_w11: db "w11 = "
+reg_w12: db "w12 = "
+reg_w13: db "w13 = "
+reg_w14: db "w14 = "
+reg_w15: db "w15 = "
+reg_w16: db "w16 = "
+reg_w17: db "w17 = "
+reg_w18: db "w18 = "
+reg_w19: db "w19 = "
+reg_w20: db "w20 = "
+reg_w21: db "w21 = "
+reg_w22: db "w22 = "
+reg_w23: db "w23 = "
+reg_w24: db "w24 = "
+reg_w25: db "w25 = "
+reg_w26: db "w26 = "
+reg_w27: db "w27 = "
+reg_w28: db "w28 = "
+reg_w29: db "w29 = "
+reg_w30: db "w30 = "
 
 strdef con_title_str,     "Arcade Kernel Kit, v0.1"
 strdef con_copyright_str, "Copyright (C) 2018 Jeff Panici. All Rights Reserved."
@@ -209,15 +273,19 @@ console_welcome:
 ;
 ; =========================================================
 console_caret:
-    sub         sp, sp, #16
+    sub         sp, sp, #48
     stp         x0, x30, [sp]
-    ldp         x1, x2, [sp, #16]
-    ldp         x3, x4, [sp, #32]
+    stp         x1, x2, [sp, #16]
+    stp         x3, x4, [sp, #32]
+    ldp         x1, x2, [sp, #48]
+    ldp         x3, x4, [sp, #64]
     pstoreb     x0, w1, caret_y
     pstoreb     x0, w2, caret_x
     pstoreb     x0, w3, caret_color
     ldp         x0, x30, [sp]
-    add         sp, sp, #48
+    ldp         x1, x2, [sp, #16]
+    ldp         x3, x4, [sp, #32]
+    add         sp, sp, #80
     ret
     
 ; =========================================================
@@ -235,28 +303,33 @@ console_caret:
 ;
 ; =========================================================
 console_write:
-    sub         sp, sp, #16
+    sub         sp, sp, #64
     stp         x0, x30, [sp]
-    ldp         x0, x1, [sp, #16]   ; str_ptr, len
-    ldp         x2, x3, [sp, #32]   ; color, pad
+    stp         x1, x2, [sp, #16]
+    stp         x3, x4, [sp, #32]
+    stp         x5, x6, [sp, #48]
+    ldp         x0, x1, [sp, #64]   ; str_ptr, len
+    ldp         x2, x3, [sp, #80]   ; color, pad
     ploadb      x4, w4, caret_y
     ploadb      x5, w5, caret_x
     mov         w6, CHARS_PER_LINE
-    madd        w6, w6, w4, w5
-    mov         w13, 2
-    mul         w6, w6, w13
-    adr         x7, console_buffer
-    add         w7, w7, w6
+    madd        w4, w6, w4, w5
+    lsl         w4, w4, 1
+    adr         x6, console_buffer
+    add         w6, w6, w4
 .loop:
-    ldrb        w10, [x0], 1
-    strb        w10, [x7], 1
-    strb        w2, [x7], 1
+    ldrb        w4, [x0], 1
+    strb        w4, [x6], 1
+    strb        w2, [x6], 1
     add         w5, w5, 1
     subs        w1, w1, 1
     b.ne        .loop
     pstoreb     x0, w5, caret_x
     ldp         x0, x30, [sp]
-    add         sp, sp, #48
+    ldp         x1, x2, [sp, #16]
+    ldp         x3, x4, [sp, #32]
+    ldp         x5, x6, [sp, #48]
+    add         sp, sp, #96
     ret
 
 ; =========================================================

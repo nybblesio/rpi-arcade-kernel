@@ -38,11 +38,12 @@
 ;
 ; =========================================================
 fill_buffer:
-        sub     sp, sp, #16
-        stp     x0, x30, [sp]
-.empty: strb    w1, [x3], 1
-        subs    w2, w2, 1
-        b.ne    .empty
-        ldp     x0, x30, [sp]
-        add     sp, sp, #16
-        ret
+    sub         sp, sp, #16
+    stp         x0, x30, [sp]
+.empty: 
+    strb        w1, [x3], 1
+    subs        w2, w2, 1
+    b.ne        .empty
+    ldp         x0, x30, [sp]
+    add         sp, sp, #16
+    ret

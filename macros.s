@@ -30,23 +30,24 @@
 ;
 ; =========================================================
 macro delay cycles {
-        local   .loop
-        mov     w12, cycles
-.loop:  subs    w12, w12, 1
-        b.ne    .loop        
+    local       .loop
+    mov         w12, cycles
+.loop:  
+    subs        w12, w12, 1
+    b.ne        .loop        
 }
 
 macro strlist [params] {
-        forward db  params
+    forward db  params
 }
 
 macro strdef name, [params] {
 align 4
 common
 label name
-        local   .end, .start
-        dw      .end - .start
+    local   .end, .start
+    dw      .end - .start
 .start:        
-        strlist params
+    strlist params
 .end:
 }

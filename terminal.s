@@ -108,6 +108,10 @@ new_prompt:
    adr      x3, command_buffer
    bl       fill_buffer
    mov      w1, 0 
+   mov      w2, TOKEN_OFFSET_COUNT
+   adr      x3, token_offsets
+   bl       fill_buffer
+   mov      w1, 0 
    pstore   x0, w1, command_buffer_offset
    uart_chr '>'
    uart_spc
@@ -156,35 +160,46 @@ terminal_update:
 
 .return:
    adr      x2, command_buffer
-   adr      x3, parse_buffer       
+   adr      x3, token_offsets
    mov      w4, 0
    pload    x5, w5, command_buffer_offset
+   mov      w6, TOKEN_OFFSET_COUNT
 
 .char:  
    cmp      w4, w5
-   b.eq     .done
+   b.eq     .bufend
    ldrb     w1, [x2], 1
    cmp      w1, CHAR_SPACE
+   b.ne     .next
+   strb     w4, [x3], 1
+   subs     w6, w6, 1
    b.eq     .done
-   strb     w1, [x3], 1
-   cmp      w4, PARSE_BUFFER_LENGTH
-   b.eq     .err
+.next:
    add      w4, w4, 1
    b        .char
+.bufend:
+   cbz      w4, .reset
+   cbz      w6, .done
+   strb     w4, [x3], 1
 
-.done:  
+.done:
+   log      debug_here1, DEBUG_HERE_LEN, $05
+   bl       command_find
+   log_reg  w1, reg_w1, $0f
+   cbz      w1, .err
    uart_chr LINEFEED_CHAR
+   ldr      w2, [x1]
+   cbz      w2, .reset
+   log_reg  w2, reg_w2, $0f
+   blr      x2
    b        .reset
 
 .err:   
    uart_chr LINEFEED_CHAR
-   bl       send_parse_error
+   ploadb   x1, w1, token_offsets
+   bl       command_error
 
 .reset: 
-   mov      w1, CHAR_SPACE
-   mov      w2, PARSE_BUFFER_LENGTH
-   adr      x3, parse_buffer
-   bl       fill_buffer
    bl       new_prompt
    b        .exit
 

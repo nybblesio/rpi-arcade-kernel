@@ -34,6 +34,7 @@ org     $0000
 
 include 'constants.s'
 include 'macros.s'
+include 'string.s'
 include 'pool.s'
 include 'timer.s'
 include 'dma.s'
@@ -44,9 +45,9 @@ include 'font.s'
 include 'util.s'
 include 'video.s'
 include 'interrupt.s'
-include 'terminal.s'
-include 'command.s'
 include 'console.s'
+include 'command.s'
+include 'terminal.s'
 
 align 16
 

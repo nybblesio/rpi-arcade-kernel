@@ -21,14 +21,6 @@ Tasks
 
 - FIX: joy_read is probably clocking the controller way too fast. Use ARM_TIMER for better control.
 
-- FINISH: find_command
-
-- refactor current token parser into function
-
-- implement parameter matching, calling next_token
-
-- implement base conversion from string to word
-
 
 KERNEL
 ------
