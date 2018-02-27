@@ -84,11 +84,13 @@ strdef con_license1_str,  "This software is "
 strdef con_license2_str,  "licensed"
 strdef con_license3_str,  " under the MIT license."
 
+timerdef timer_caret_blink, 1, 250000, caret_blink_callback
+
 align 16
 
 ; =========================================================
 ;
-; console_welcome
+; caret_draw
 ;
 ; stack:
 ;   (none)
@@ -102,8 +104,6 @@ caret_draw:
     stp         x0, x30, [sp]
     ploadb      x2, w1, caret_show
     cbz         w1, .skip
-    mov         w1, 0
-    pstoreb     x2, w1, caret_show
     sub         sp, sp, #48
     ploadb      x1, w1, caret_y
     mov         w2, FONT_HEIGHT + 1
@@ -120,11 +120,37 @@ caret_draw:
     mov         x2, 0
     stp         x1, x2, [sp, #32]
     bl          draw_filled_rect
-    b           .done
 .skip:
+    ldp         x0, x30, [sp]
+    add         sp, sp, #16
+    ret
+
+; =========================================================
+;
+; caret_blink_callback
+;
+; stack:
+;   (none)
+;   
+; registers:
+;   (none)
+;
+; =========================================================
+caret_blink_callback:
+    sub         sp, sp, #16
+    stp         x0, x30, [sp]
+    ploadb      x0, w0, caret_show
+    cbz         w0, .one
+    mov         w1, 0
+    pstoreb     x0, w1, caret_show
+    b           .done
+.one:
     mov         w1, 1
-    pstoreb     x2, w1, caret_show
-.done:    
+    pstoreb     x0, w1, caret_show 
+.done: 
+    mov         w1, F_TIMER_ENABLED
+    adr         x0, timer_caret_blink
+    str         w1, [x0, TIMER_STATUS]
     ldp         x0, x30, [sp]
     add         sp, sp, #16
     ret
@@ -162,6 +188,8 @@ console_welcome:
     ldr         w1, [x0], 4
     con_write   x0, x1, $0f
     con_caret   4, 0, $0f
+    adr         x1, timer_caret_blink
+    bl          timer_start
     ldp         x0, x30, [sp]
     add         sp, sp, #16
     ret
