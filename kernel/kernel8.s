@@ -96,6 +96,7 @@ kernel_core:
     bl          joy_init
     bl          video_init
     bl          cmd_reset_func
+    uart_nl
     bl          term_prompt
     bl          console_welcome
 

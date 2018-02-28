@@ -176,7 +176,6 @@ joy_read:
     subs        w2, w2, 1
     b.ne        .loop
     pstore      x0, w1, joy0_state
-    ;log_reg     w1, reg_joy00, $08
     ldp         x0, x30, [sp]
     ldp         x1, x2, [sp, #16]
     ldp         x3, x4, [sp, #32]

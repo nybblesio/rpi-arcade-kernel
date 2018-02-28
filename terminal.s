@@ -60,7 +60,7 @@ strdef  kernel_license2, \
 
 strdef  kernel_help, "Use the ", TERM_BOLD, TERM_UNDERLINE, "help", TERM_NOATTR, \
    " command to learn more about how the", TERM_NEWLINE, \
-   "serial console works.", TERM_NEWLINE2
+   "serial console works.", TERM_NEWLINE
 
 strdef  parse_error, TERM_BLINK, TERM_REVERSE, TERM_BOLD, " ERROR: ", TERM_NOATTR, \
    " Unable to parse command: "
@@ -158,6 +158,7 @@ term_update:
    b        .exit
 
 .return:
+   uart_chr LINEFEED_CHAR
    adr      x2, command_buffer
    adr      x3, token_offsets
    mov      w4, 0
@@ -182,23 +183,19 @@ term_update:
    strb     w4, [x3], 1
 
 .done:
-   log      debug_here1, DEBUG_HERE_LEN, $05
    bl       command_find
-   log_reg  w1, reg_w1, $0f
    cbz      w1, .err
-   uart_chr LINEFEED_CHAR
    ldr      w2, [x1, CMD_DEF_CALLBACK]
    cbz      w2, .reset
-   log_reg  w2, reg_w2, $0f
    blr      x2
    b        .reset
 
 .err:   
-   uart_chr LINEFEED_CHAR
    ploadb   x1, w1, token_offsets
    bl       command_error
 
 .reset: 
+   uart_nl   
    bl       term_prompt
    b        .exit
 

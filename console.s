@@ -59,19 +59,44 @@ macro con_write str, len, color {
     bl          console_write
 }
 
-macro log str, len, color {
-    con_write   str, len, color
+macro log str, len {
+    con_write   str, len, $0f
     bl          console_caret_nl
 }
 
-macro log_reg reg, name, color {
-    con_write   name, REG_LABEL_LEN, color
+macro info str, len {
+    con_write   info_level, LEVEL_LABEL_LEN, $04
+    log         str, len
+}
+
+macro debug str, len {
+    con_write   debug_level, LEVEL_LABEL_LEN, $04
+    log         str, len
+}
+
+macro warn str, len {
+    con_write   warn_level, LEVEL_LABEL_LEN, $09
+    log         str, len
+}
+
+macro error str, len {
+    con_write   error_level, LEVEL_LABEL_LEN, $03
+    log         str, len
+}
+
+macro log_reg reg, name {
+    con_write   name, REG_LABEL_LEN, $0f
     str_hex8    reg, number_buffer + 1
-    con_write   number_buffer, 9, color
+    con_write   number_buffer, 9, $0f
     bl          console_caret_nl
 }
 
-macro log_label label, name, color {
+macro info_reg reg, name {
+    con_write   info_level, LEVEL_LABEL_LEN, $04
+    log_reg     reg, name
+}
+
+macro log_label label, name {
 }
 
 ; =========================================================
@@ -137,6 +162,12 @@ reg_w30: db "w30 = "
 
 reg_joy00: db "j00 = "
 reg_joy01: db "j01 = "
+
+LEVEL_LABEL_LEN = 7
+info_level:  db " INFO: "
+debug_level: db "DEBUG: "
+warn_level:  db " WARN: "
+error_level: db "ERROR: "
 
 strdef con_title_str,     "Arcade Kernel Kit, v0.1"
 strdef con_copyright_str, "Copyright (C) 2018 Jeff Panici. All Rights Reserved."
@@ -243,7 +274,7 @@ console_welcome:
     con_write   x0, x1, $0f
     adr         x0, con_license2_str
     ldr         w1, [x0], 4
-    con_write   x0, x1, $03
+    con_write   x0, x1, $06
     adr         x0, con_license3_str
     ldr         w1, [x0], 4
     con_write   x0, x1, $0f
