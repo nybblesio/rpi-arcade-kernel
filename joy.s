@@ -114,18 +114,18 @@
 ; Constants Section
 ;
 ; =========================================================
-JOY_R      = 0000000000010000b
-JOY_L      = 0000000000100000b
-JOY_X      = 0000000001000000b
-JOY_A      = 0000000010000000b
-JOY_RIGHT  = 0000000100000000b
-JOY_LEFT   = 0000001000000000b
-JOY_DOWN   = 0000010000000000b
-JOY_UP     = 0000100000000000b
-JOY_START  = 0001000000000000b
-JOY_SELECT = 0010000000000000b
-JOY_Y      = 0100000000000000b
-JOY_B      = 1000000000000000b
+JOY_R      = 0000000000000000_0000000000010000b
+JOY_L      = 0000000000000000_0000000000100000b
+JOY_X      = 0000000000000000_0000000001000000b
+JOY_A      = 0000000000000000_0000000010000000b
+JOY_RIGHT  = 0000000000000000_0000000100000000b
+JOY_LEFT   = 0000000000000000_0000001000000000b
+JOY_DOWN   = 0000000000000000_0000010000000000b
+JOY_UP     = 0000000000000000_0000100000000000b
+JOY_START  = 0000000000000000_0001000000000000b
+JOY_SELECT = 0000000000000000_0010000000000000b
+JOY_Y      = 0000000000000000_0100000000000000b
+JOY_B      = 0000000000000000_1000000000000000b
 
 ; =========================================================
 ;
@@ -134,7 +134,32 @@ JOY_B      = 1000000000000000b
 ; =========================================================
 align 4
 joy0_state: dw 0
+joy0_r:     db 0
+joy0_l:     db 0
+joy0_x:     db 0
+joy0_a:     db 0
+joy0_right: db 0
+joy0_left:  db 0
+joy0_down:  db 0
+joy0_up:    db 0
+joy0_start: db 0
+joy0_select:db 0
+joy0_y:     db 0
+joy0_b:     db 0
+
 joy1_state: dw 0
+joy1_r:     db 0
+joy1_l:     db 0
+joy1_x:     db 0
+joy1_a:     db 0
+joy1_right: db 0
+joy1_left:  db 0
+joy1_down:  db 0
+joy1_up:    db 0
+joy1_start: db 0
+joy1_select:db 0
+joy1_y:     db 0
+joy1_b:     db 0
 
 ; =========================================================
 ;
@@ -152,6 +177,15 @@ joy_read:
     stp         x0, x30, [sp]
     stp         x1, x2, [sp, #16]
     stp         x3, x4, [sp, #32]
+    mov         w1, 0
+    adr         x0, joy0_r
+    str         w1, [x0], 4
+    str         w1, [x0], 4
+    str         w1, [x0], 4
+    adr         x0, joy1_r
+    str         w1, [x0], 4
+    str         w1, [x0], 4
+    str         w1, [x0], 4
     pload       x0, w0, gpio_base
     mov         w1, GPIO_11
     str         w1, [x0, GPIO_GPSET0]
@@ -176,6 +210,55 @@ joy_read:
     subs        w2, w2, 1
     b.ne        .loop
     pstore      x0, w1, joy0_state
+    mov         w2, 1
+    tst         w1, JOY_R
+    b.eq        .joy_l
+    pstoreb     x0, w2, joy0_r
+.joy_l:
+    tst         w1, JOY_L
+    b.eq        .joy_x
+    pstoreb     x0, w2, joy0_l
+.joy_x:
+    tst         w1, JOY_X
+    b.eq        .joy_a
+    pstoreb     x0, w2, joy0_x
+.joy_a:
+    tst         w1, JOY_A
+    b.eq        .joy_right
+    pstoreb     x0, w2, joy0_a
+.joy_right:
+    tst         w1, JOY_RIGHT
+    b.eq        .joy_left
+    pstoreb     x0, w2, joy0_right
+.joy_left:
+    tst         w1, JOY_LEFT
+    b.eq        .joy_down
+    pstoreb     x0, w2, joy0_left
+.joy_down:
+    tst         w1, JOY_DOWN
+    b.eq        .joy_up
+    pstoreb     x0, w2, joy0_down
+.joy_up:
+    tst         w1, JOY_UP
+    b.eq        .joy_start
+    pstoreb     x0, w2, joy0_up
+.joy_start:
+    tst         w1, JOY_START
+    b.eq        .joy_select
+    pstoreb     x0, w2, joy0_start
+.joy_select:
+    tst         w1, JOY_SELECT
+    b.eq        .joy_y
+    pstoreb     x0, w2, joy0_select
+.joy_y:
+    tst         w1, JOY_Y
+    b.eq        .joy_b
+    pstoreb     x0, w2, joy0_y
+.joy_b:
+    tst         w1, JOY_B
+    b.eq        .done
+    pstoreb     x0, w2, joy0_b
+.done:
     ldp         x0, x30, [sp]
     ldp         x1, x2, [sp, #16]
     ldp         x3, x4, [sp, #32]

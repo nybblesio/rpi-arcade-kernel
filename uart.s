@@ -40,9 +40,30 @@ macro uart_nl {
     uart_chr    $0a
 }
 
-macro uart_hex value {
+macro uart_hex8 value {
     uart_chr    '$'
-    mov         w1, value
+    sub         sp, sp, #16
+    mov         w20, value
+    mov         w21, 8
+    stp         x20, x21, [sp]
+    bl          uart_send_hex
+}
+
+macro uart_hex16 value {
+    uart_chr    '$'
+    sub         sp, sp, #16
+    mov         w20, value
+    mov         w21, 16
+    stp         x20, x21, [sp]
+    bl          uart_send_hex
+}
+
+macro uart_hex32 value {
+    uart_chr    '$'
+    sub         sp, sp, #16
+    mov         w20, value
+    mov         w21, 32
+    stp         x20, x21, [sp]
     bl          uart_send_hex
 }
 
@@ -181,40 +202,41 @@ uart_send:
 ; uart_send_hex
 ;
 ; stack:
-;   (none)
+;   word to send as hex
+;   number of bits
 ;
 ; registers:
-;   w0 scratch register
-;   w1 word to send as hex
-;   w2-w4 scratch register
+;   (none)
 ;
 ; =========================================================
 uart_send_hex:
-    sub         sp, sp, #16
+    sub         sp, sp, #48
     stp         x0, x30, [sp]
+    stp         x1, x2, [sp, #16]
+    stp         x3, x4, [sp, #32]
+    ldp         x1, x2, [sp, #48]
     pload       x0, w0, aux_base
-    mov         w3, 32
 .full:  
-    ldr         w2, [x0, AUX_MU_LSR_REG]
-    ands        w2, w2, $20
-    b.ne        .ready
-    b           .full
-.ready: 
-    mov         w4, w1
-    sub         w3, w3, 4
-    lsr         w4, w4, w3
-    and         w4, w4, $0f
-    cmp         w4, 9
+    ldr         w3, [x0, AUX_MU_LSR_REG]
+    ands        w3, w3, $20
+    b.eq        .full
+    mov         w3, w1
+    sub         w2, w2, 4
+    lsr         w3, w3, w2
+    and         w3, w3, $0f
+    cmp         w3, 9
     b.gt        .gt
-    add         w4, w4, $30
+    add         w3, w3, $30
     b           .send
 .gt:    
-    add         w4, w4, $37
+    add         w3, w3, $37
 .send:  
-    str         w4, [x0, AUX_MU_IO_REG]
-    cbnz        w3, .full
+    str         w3, [x0, AUX_MU_IO_REG]
+    cbnz        w2, .full
     ldp         x0, x30, [sp]
-    add         sp, sp, #16
+    ldp         x1, x2, [sp, #16]
+    ldp         x3, x4, [sp, #32]
+    add         sp, sp, #64
     ret
 
 ; =========================================================

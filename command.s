@@ -136,6 +136,20 @@ commands:
     ; end sentinel
     dw          0
 
+JOY_LABEL_LEN = 13
+cmd_joy_r:      db "JOY_R      = "
+cmd_joy_l:      db "JOY_L      = "
+cmd_joy_x:      db "JOY_X      = "
+cmd_joy_a:      db "JOY_A      = "
+cmd_joy_right:  db "JOY_RIGHT  = "
+cmd_joy_left:   db "JOY_LEFT   = "
+cmd_joy_down:   db "JOY_DOWN   = "
+cmd_joy_up:     db "JOY_UP     = "
+cmd_joy_start:  db "JOY_START  = "
+cmd_joy_select: db "JOY_SELECT = "
+cmd_joy_y:      db "JOY_Y      = "
+cmd_joy_b:      db "JOY_B      = "
+
 cmd_j0_msg:     db "execute 'j0' command."
 cmd_j1_msg:     db "execute 'j1' command."
 cmd_reg_msg:    db "execute 'r' command."
@@ -162,97 +176,97 @@ cmd_reg_func:
     stp         x0, x30, [sp]
     info        cmd_reg_msg, 20
     uart_strl   reg_w0, REG_LABEL_LEN
-    uart_hex    w0
+    uart_hex32  w0
     uart_nl
     uart_strl   reg_w1, REG_LABEL_LEN
-    uart_hex    w1
+    uart_hex32  w1
     uart_nl
     uart_strl   reg_w2, REG_LABEL_LEN
-    uart_hex    w2
+    uart_hex32  w2
     uart_nl
     uart_strl   reg_w3, REG_LABEL_LEN
-    uart_hex    w3
+    uart_hex32  w3
     uart_nl
     uart_strl   reg_w4, REG_LABEL_LEN
-    uart_hex    w4
+    uart_hex32  w4
     uart_nl
     uart_strl   reg_w5, REG_LABEL_LEN
-    uart_hex    w5
+    uart_hex32  w5
     uart_nl
     uart_strl   reg_w6, REG_LABEL_LEN
-    uart_hex    w6
+    uart_hex32  w6
     uart_nl
     uart_strl   reg_w7, REG_LABEL_LEN
-    uart_hex    w7
+    uart_hex32  w7
     uart_nl
     uart_strl   reg_w8, REG_LABEL_LEN
-    uart_hex    w8
+    uart_hex32  w8
     uart_nl
     uart_strl   reg_w9, REG_LABEL_LEN
-    uart_hex    w9
+    uart_hex32  w9
     uart_nl
     uart_strl   reg_w10, REG_LABEL_LEN
-    uart_hex    w10
+    uart_hex32  w10
     uart_nl
     uart_strl   reg_w11, REG_LABEL_LEN
-    uart_hex    w11
+    uart_hex32  w11
     uart_nl
     uart_strl   reg_w12, REG_LABEL_LEN
-    uart_hex    w12
+    uart_hex32  w12
     uart_nl
     uart_strl   reg_w13, REG_LABEL_LEN
-    uart_hex    w13
+    uart_hex32  w13
     uart_nl
     uart_strl   reg_w14, REG_LABEL_LEN
-    uart_hex    w14
+    uart_hex32  w14
     uart_nl
     uart_strl   reg_w15, REG_LABEL_LEN
-    uart_hex    w15
+    uart_hex32  w15
     uart_nl
     uart_strl   reg_w16, REG_LABEL_LEN
-    uart_hex    w16
+    uart_hex32  w16
     uart_nl
     uart_strl   reg_w17, REG_LABEL_LEN
-    uart_hex    w17
+    uart_hex32  w17
     uart_nl
     uart_strl   reg_w18, REG_LABEL_LEN
-    uart_hex    w18
+    uart_hex32  w18
     uart_nl
     uart_strl   reg_w19, REG_LABEL_LEN
-    uart_hex    w19
+    uart_hex32  w19
     uart_nl
     uart_strl   reg_w20, REG_LABEL_LEN
-    uart_hex    w20
+    uart_hex32  w20
     uart_nl
     uart_strl   reg_w21, REG_LABEL_LEN
-    uart_hex    w21
+    uart_hex32  w21
     uart_nl
     uart_strl   reg_w22, REG_LABEL_LEN
-    uart_hex    w22
+    uart_hex32  w22
     uart_nl
     uart_strl   reg_w23, REG_LABEL_LEN
-    uart_hex    w23
+    uart_hex32  w23
     uart_nl
     uart_strl   reg_w24, REG_LABEL_LEN
-    uart_hex    w24
+    uart_hex32  w24
     uart_nl
     uart_strl   reg_w25, REG_LABEL_LEN
-    uart_hex    w25
+    uart_hex32  w25
     uart_nl
     uart_strl   reg_w26, REG_LABEL_LEN
-    uart_hex    w26
+    uart_hex32  w26
     uart_nl
     uart_strl   reg_w27, REG_LABEL_LEN
-    uart_hex    w27
+    uart_hex32  w27
     uart_nl
     uart_strl   reg_w28, REG_LABEL_LEN
-    uart_hex    w28
+    uart_hex32  w28
     uart_nl
     uart_strl   reg_w29, REG_LABEL_LEN
-    uart_hex    w29
+    uart_hex32  w29
     uart_nl
     uart_strl   reg_w30, REG_LABEL_LEN
-    uart_hex    w30
+    uart_hex32  w30
     uart_nl
     ldp         x0, x30, [sp]
     add         sp, sp, #16
@@ -308,15 +322,72 @@ cmd_dump_func:
 ;
 ; =========================================================
 cmd_joy0_func:
-    sub         sp, sp, #16
+    sub         sp, sp, #32
     stp         x0, x30, [sp]
+    stp         x1, x2, [sp, #16]
     info        cmd_j0_msg, 21
-    uart_str    joy0_state_label
-    pload       x0, w0, joy0_state
-    str_hex8    w0, number_buffer + 1
-    uart_str    str_number_buffer
+    
+    ploadb      x0, w0, joy0_r
+    uart_strl   cmd_joy_r, JOY_LABEL_LEN
+    uart_hex8   w0
+    uart_nl
+
+    ploadb      x0, w0, joy0_l
+    uart_strl   cmd_joy_l, JOY_LABEL_LEN
+    uart_hex8   w0
+    uart_nl
+
+    ploadb      x0, w0, joy0_x
+    uart_strl   cmd_joy_x, JOY_LABEL_LEN
+    uart_hex8   w0
+    uart_nl
+
+    ploadb      x0, w0, joy0_a
+    uart_strl   cmd_joy_a, JOY_LABEL_LEN
+    uart_hex8   w0
+    uart_nl
+
+    ploadb      x0, w0, joy0_right
+    uart_strl   cmd_joy_right, JOY_LABEL_LEN
+    uart_hex8   w0
+    uart_nl
+
+    ploadb      x0, w0, joy0_left
+    uart_strl   cmd_joy_left, JOY_LABEL_LEN
+    uart_hex8   w0
+    uart_nl
+
+    ploadb      x0, w0, joy0_down
+    uart_strl   cmd_joy_down, JOY_LABEL_LEN
+    uart_hex8   w0
+    uart_nl
+
+    ploadb      x0, w0, joy0_up
+    uart_strl   cmd_joy_up, JOY_LABEL_LEN
+    uart_hex8   w0
+    uart_nl
+
+    ploadb      x0, w0, joy0_start
+    uart_strl   cmd_joy_start, JOY_LABEL_LEN
+    uart_hex8   w0
+    uart_nl
+
+    ploadb      x0, w0, joy0_select
+    uart_strl   cmd_joy_select, JOY_LABEL_LEN
+    uart_hex8   w0
+    uart_nl
+
+    ploadb      x0, w0, joy0_y
+    uart_strl   cmd_joy_y, JOY_LABEL_LEN
+    uart_hex8   w0
+    uart_nl
+
+    ploadb      x0, w0, joy0_b
+    uart_strl   cmd_joy_b, JOY_LABEL_LEN
+    uart_hex8   w0
     ldp         x0, x30, [sp]
-    add         sp, sp, #16
+    ldp         x1, x2, [sp, #16]
+    add         sp, sp, #32
     ret
 
 ; =========================================================
@@ -334,10 +405,66 @@ cmd_joy1_func:
     sub         sp, sp, #16
     stp         x0, x30, [sp]
     info        cmd_j1_msg, 21
-    uart_str    joy1_state_label
-    pload       x0, w0, joy1_state
-    str_hex8    w0, number_buffer + 1
-    uart_str    str_number_buffer
+
+    ploadb      x0, w0, joy1_r
+    uart_strl   cmd_joy_r, JOY_LABEL_LEN
+    uart_hex8   w0
+    uart_nl
+
+    ploadb      x0, w0, joy1_l
+    uart_strl   cmd_joy_l, JOY_LABEL_LEN
+    uart_hex8   w0
+    uart_nl
+
+    ploadb      x0, w0, joy1_x
+    uart_strl   cmd_joy_x, JOY_LABEL_LEN
+    uart_hex8   w0
+    uart_nl
+
+    ploadb      x0, w0, joy1_a
+    uart_strl   cmd_joy_a, JOY_LABEL_LEN
+    uart_hex8   w0
+    uart_nl
+
+    ploadb      x0, w0, joy1_right
+    uart_strl   cmd_joy_right, JOY_LABEL_LEN
+    uart_hex8   w0
+    uart_nl
+
+    ploadb      x0, w0, joy1_left
+    uart_strl   cmd_joy_left, JOY_LABEL_LEN
+    uart_hex8   w0
+    uart_nl
+
+    ploadb      x0, w0, joy1_down
+    uart_strl   cmd_joy_down, JOY_LABEL_LEN
+    uart_hex8   w0
+    uart_nl
+
+    ploadb      x0, w0, joy1_up
+    uart_strl   cmd_joy_up, JOY_LABEL_LEN
+    uart_hex8   w0
+    uart_nl
+
+    ploadb      x0, w0, joy1_start
+    uart_strl   cmd_joy_start, JOY_LABEL_LEN
+    uart_hex8   w0
+    uart_nl
+
+    ploadb      x0, w0, joy1_select
+    uart_strl   cmd_joy_select, JOY_LABEL_LEN
+    uart_hex8   w0
+    uart_nl
+
+    ploadb      x0, w0, joy1_y
+    uart_strl   cmd_joy_y, JOY_LABEL_LEN
+    uart_hex8   w0
+    uart_nl
+
+    ploadb      x0, w0, joy1_b
+    uart_strl   cmd_joy_b, JOY_LABEL_LEN
+    uart_hex8   w0
+
     ldp         x0, x30, [sp]
     add         sp, sp, #16
     ret
