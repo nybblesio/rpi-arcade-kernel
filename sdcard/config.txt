@@ -1,0 +1,7 @@
+kernel_old=1
+disable_commandline_tags=1
+disable_overscan=1
+framebuffer_swap=0
+display_rotate=3
+fake_vsync_isr=1
+enable_uart=1
