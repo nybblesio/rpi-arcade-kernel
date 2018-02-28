@@ -308,7 +308,7 @@ draw_vline:
 ;
 ; =========================================================
 draw_string:
-    sub         sp, sp, #128
+    sub         sp, sp, #112
     stp         x0, x30, [sp]
     stp         x1, x2, [sp, #16]
     stp         x3, x4, [sp, #32]
@@ -316,47 +316,49 @@ draw_string:
     stp         x7, x8, [sp, #64]
     stp         x9, x10, [sp, #80]
     stp         x11, x12, [sp, #96]
-    stp         x13, x14, [sp, #112]
-    ldp         x1, x2, [sp, #128]   ; y, x
-    ldp         x3, x4, [sp, #144]   ; str_ptr, len
-    ldp         x13, x14, [sp, #160] ; color, pad
+    ldp         x1, x2, [sp, #112]  ; y, x
+    ldp         x3, x4, [sp, #128]  ; str_ptr, len
+    ldp         x5, x6, [sp, #144]  ; color, pad
 
-    mov         w5, SCREEN_WIDTH
-    madd        w5, w5, w1, w2
-    add         w0, w0, w5
+    mov         w6, SCREEN_WIDTH
+    madd        w6, w6, w1, w2
+    add         w0, w0, w6
     mov         w6, w0
-    adr         x5, nitram_micro_font
-    mov         w7, FONT_HEIGHT
+    adr         x7, nitram_micro_font
 .char:  
-    ldrb        w8, [x3], 1
-    madd        w9, w8, w7, w5
-    mov         w10, FONT_HEIGHT
+    mov         w8, FONT_HEIGHT
+    ldrb        w9, [x3], 1
+    cmp         w9, CHAR_SPACE
+    b.eq        .next_char
+    cmp         w9, 0
+    b.eq        .next_char
+    madd        w9, w9, w8, w7
 .row:   
-    ldrb        w11, [x9], 1
-    mov         w12, 00000000_00000000_00000000_00010000b
+    ldrb        w10, [x9], 1
+    mov         w11, 00000000_00000000_00000000_00010000b
 .pixel: 
-    ands        w14, w11, w12
+    ands        w12, w10, w11
     b.eq        .next
-    strb        x13, [x0]
+    strb        w5, [x0]
 .next:  
     add         x0, x0, 1
-    lsr         w12, w12, 1
-    cbnz        w12, .pixel
+    lsr         w11, w11, 1
+    cbnz        w11, .pixel
     add         x0, x0, SCREEN_WIDTH - FONT_WIDTH
-    subs        w10, w10, 1
+    subs        w8, w8, 1
     b.ne        .row
+.next_char:    
     add         w6, w6, FONT_WIDTH + 1
     mov         w0, w6
     subs        w4, w4, 1
     b.ne        .char
 
-    ldp     x0, x30, [sp]
-    ldp     x1, x2, [sp, #16]
-    ldp     x3, x4, [sp, #32]
-    ldp     x5, x6, [sp, #48]
-    ldp     x7, x8, [sp, #64]
-    ldp     x9, x10, [sp, #80]
-    ldp     x11, x12, [sp, #96]
-    ldp     x13, x14, [sp, #112]
-    add     sp, sp, #176
+    ldp         x0, x30, [sp]
+    ldp         x1, x2, [sp, #16]
+    ldp         x3, x4, [sp, #32]
+    ldp         x5, x6, [sp, #48]
+    ldp         x7, x8, [sp, #64]
+    ldp         x9, x10, [sp, #80]
+    ldp         x11, x12, [sp, #96]
+    add         sp, sp, #160
     ret
