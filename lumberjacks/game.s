@@ -48,6 +48,92 @@ revision:         db 0
 include     'constants.s'
 include     'macros.s'
 
+; =========================================================
+;
+; Macros Section
+;
+; =========================================================
+macro tile ypos, xpos, tile, pal {
+    sub         sp, sp, #32
+    mov         w20, ypos
+    mov         w21, xpos
+    stp         x20, x21, [sp]
+    mov         w20, tile
+    mov         w21, pal
+    stp         x20, x21, [sp, #16]
+    bl          draw_tile
+}
+
+macro stamp ypos, xpos, tile, pal {
+    sub         sp, sp, #32
+    mov         w20, ypos
+    mov         w21, xpos
+    stp         x20, x21, [sp]
+    mov         w20, tile
+    mov         w21, pal
+    stp         x20, x21, [sp, #16]
+    bl          draw_stamp
+}
+
+macro spr number {
+    adr         x20, sprite_control
+    mov         w21, 6 * 4
+    mov         w22, number
+    madd        w20, w22, w21, w20
+}
+
+macro spr_pos ypos, xpos {
+    mov         w21, ypos
+    mov         w22, xpos
+    str         w21, [x20, SPR_Y_POS]
+    str         w22, [x20, SPR_X_POS]
+}
+
+macro spr_addx pixels {
+    ldr         w21, [x20, SPR_X_POS]
+    add         w21, w21, pixels
+    str         w21, [x20, SPR_X_POS]
+}
+
+macro spr_subx pixels {
+    ldr         w21, [x20, SPR_X_POS]
+    sub         w21, w21, pixels
+    str         w21, [x20, SPR_X_POS]
+}
+
+macro spr_addy pixels {
+    ldr         w21, [x20, SPR_Y_POS]
+    add         w21, w21, pixels
+    str         w21, [x20, SPR_Y_POS]
+}
+
+macro spr_suby pixels {
+    ldr         w21, [x20, SPR_Y_POS]
+    sub         w21, w21, pixels
+    str         w21, [x20, SPR_Y_POS]
+}
+
+macro spr_tile tile {
+    mov         w21, tile
+    str         w21, [x20, SPR_TILE]
+}
+
+macro spr_pal pal {
+    mov         w21, pal
+    str         w21, [x20, SPR_PAL]
+}
+
+macro spr_flags flags {
+    mov         w21, flags
+    str         w21, [x20, SPR_FLAGS]
+}
+
+macro spr_user data {
+    mov         w21, data
+    str         w21, [x20, SPR_USER]
+}
+
+
 align 16
 
 ; =========================================================
@@ -64,46 +150,46 @@ align 16
 ;   (none)
 ;
 ; =========================================================
-draw_tile:        
-    ldp         x2, x3, [sp]
-    ldp         x5, x4, [sp, #16]
-    mov         w1, TILE_BYTES
-    mul         w5, w5, w1
-    mov         w1, PALETTE_SIZE
-    mul         w6, w4, w1
+draw_tile:
+    sub         sp, sp, #80
+    stp         x0, x30, [sp]
+    stp         x1, x2, [sp, #16]
+    stp         x3, x4, [sp, #32]
+    stp         x5, x6, [sp, #48]
+    stp         x7, x8, [sp, #64]
+    ldp         x1, x2, [sp, #80]
+    ldp         x3, x4, [sp, #96]
 
-    mov         w1, SCREEN_WIDTH
-    mul         w1, w1, w2
-    add         w1, w1, w3
-    add         w0, w0, w1
+    mov         w5, TILE_BYTES
+    mul         w3, w3, w5
+    mov         w5, PALETTE_SIZE
+    mul         w4, w4, w5
 
-    adr         x1, timber_bg
-    add         x1, x1, x5
-    mov         w3, TILE_HEIGHT
+    mov         w5, SCREEN_WIDTH
+    madd        w6, w1, w5, w2
+    add         w0, w0, w6
+
+    adr         x5, timber_bg
+    add         w3, w3, w5
+    mov         w6, TILE_HEIGHT
 .raster:    
-    mov         w4, TILE_WIDTH
+    mov         w7, TILE_WIDTH
 .pixel:
-    ldrb        x5, [x1], 1
-    add         x5, x5, x6
-    strb        x5, [x0], 1
-    subs        w4, w4, 1
+    ldrb        w8, [x5], 1
+    add         w5, w5, w4
+    strb        w5, [x0], 1
+    subs        w7, w7, 1
     b.ne        .pixel
     add         x0, x0, SCREEN_WIDTH - TILE_WIDTH
-    subs        w3, w3, 1
+    subs        w6, w6, 1
     b.ne        .raster
+    ldp         x0, x30, [sp]
+    ldp         x1, x2, [sp, #16]
+    ldp         x3, x4, [sp, #32]
+    ldp         x5, x6, [sp, #48]
+    ldp         x7, x8, [sp, #64]
+    add         sp, sp, #112
     ret
-
-macro tile ypos, xpos, tile, pal {
-    sub         sp, sp, #32
-    mov         w1, ypos
-    mov         w2, xpos
-    stp         x1, x2, [sp]
-    mov         w3, tile
-    mov         w4, pal
-    stp         x3, x4, [sp, #16]
-    bl          draw_tile
-    add         sp, sp, #32
-}
 
 ; =========================================================
 ;
@@ -125,68 +211,51 @@ macro tile ypos, xpos, tile, pal {
 ;
 ; =========================================================
 draw_stamp:        
-    ldp         x2, x3, [sp]
-    mov         w1, SCREEN_WIDTH
-    mul         w1, w1, w2
-    add         w1, w1, w3
-    add         w0, w0, w1
+    sub         sp, sp, #80
+    stp         x0, x30, [sp]
+    stp         x1, x2, [sp, #16]
+    stp         x3, x4, [sp, #32]
+    stp         x5, x6, [sp, #48]
+    stp         x7, x8, [sp, #64]
+    ldp         x1, x2, [sp, #80]
+    ldp         x3, x4, [sp, #96]
 
-    ldp         x5, x4, [sp, #16]
-    mov         w1, SPRITE_BYTES
-    mul         w5, w5, w1
-    mov         w1, PALETTE_SIZE
-    mul         w6, w4, w1
+    mov         w5, SPRITE_BYTES
+    mul         w3, w3, w5
+    mov         w5, PALETTE_SIZE
+    mul         w4, w4, w5
 
-    adr         x1, timber_fg
-    add         x1, x1, x5
-    mov         w3, SPRITE_HEIGHT
+    mov         w5, SCREEN_WIDTH
+    madd        w6, w1, w5, w2
+    add         w0, w0, w6
+
+    adr         x5, timber_bg
+    add         w3, w3, w5
+    mov         w6, SPRITE_HEIGHT
 .raster:    
-    mov         w4, SPRITE_WIDTH
+    mov         w7, SPRITE_WIDTH
 .pixel:
-    ldrb        x5, [x1], 1
-    cbz         x5, .skip
-    add         x5, x5, x6
-    strb        x5, [x0], 1
+    ldrb        w8, [x5], 1
+    cbz         w8, .skip
+    add         w8, w8, w4
+    strb        w8, [x0], 1
     b           .done
 .skip:  
-    add         x0, x0, 1
+    add         w0, w0, 1
 .done:  
-    subs        w4, w4, 1
+    subs        w7, w7, 1
     b.ne        .pixel
     add         x0, x0, SCREEN_WIDTH - SPRITE_WIDTH
-    subs        w3, w3, 1
+    subs        w6, w6, 1
     b.ne        .raster
+
+    ldp         x0, x30, [sp]
+    ldp         x1, x2, [sp, #16]
+    ldp         x3, x4, [sp, #32]
+    ldp         x5, x6, [sp, #48]
+    ldp         x7, x8, [sp, #64]
+    add         sp, sp, #112
     ret
-
-macro stamp ypos, xpos, tile, pal {
-    sub         sp, sp, #32
-    mov         w1, ypos
-    mov         w2, xpos
-    stp         x1, x2, [sp]
-    mov         w3, tile
-    mov         w4, pal
-    stp         x3, x4, [sp, #16]
-    bl          draw_stamp
-    add         sp, sp, #32
-}
-
-macro sprite number, ypos, xpos, tile, pal, flags {
-    adr         x0, sprite_control
-    mov         w1, 6 * 4
-    mov         w2, number
-    mul         x1, x1, x2
-    add         x0, x0, x1
-    mov         w1, tile
-    mov         w2, ypos
-    mov         w3, xpos
-    mov         w4, pal
-    mov         w5, flags
-    str         w1, [x0], 4
-    str         w2, [x0], 4
-    str         w3, [x0], 4
-    str         w4, [x0], 4
-    str         w5, [x0], 4
-}
 
 ; =========================================================
 ;
@@ -200,8 +269,35 @@ macro sprite number, ypos, xpos, tile, pal, flags {
 ;
 ; =========================================================
 game_init:
-    sprite      0, 32, 32, 1, 0, 0  
-    sprite      1, 64, 32, 2, 0, 0
+    sub         sp, sp, #16
+    stp         x0, x30, [sp]
+    spr         0
+    spr_pos     32, 32
+    spr_tile    1
+    spr         1
+    spr_pos     64, 32
+    spr_tile    2
+    ldp         x0, x30, [sp]
+    add         sp, sp, #16
+    ret
+
+; =========================================================
+;
+; game_update
+;
+; stack:
+;   (none)
+;   
+; registers:
+;   (none)
+;
+; =========================================================
+game_update:
+    sub         sp, sp, #16
+    stp         x0, x30, [sp]
+
+    ldp         x0, x30, [sp]
+    add         sp, sp, #16
     ret
 
 ; =========================================================
@@ -216,40 +312,53 @@ game_init:
 ;
 ; =========================================================
 game_tick:
-    ; background render loop
-    adr         x10, background_control        
-    mov         w11, 30
-    mov         w12, 0              ; y
-    mov         w13, 0              ; x 
+    sub         sp, sp, #80
+    stp         x0, x30, [sp]
+    stp         x1, x2, [sp, #16]
+    stp         x3, x4, [sp, #32]
+    stp         x5, x6, [sp, #48]
+    stp         x7, x8, [sp, #64]
+
+    bl          game_update
+
+    adr         x1, background_control        
+    mov         w2, 30
+    mov         w3, 0              ; y
+    mov         w4, 0              ; x 
 .bg_row:        
-    mov         w14, 32
+    mov         w5, 32
 .bg_tile:
-    ldr         w15, [x10], 4       ; tile number
-    ldr         w16, [x10], 4       ; palette
-    add         x10, x10, 8         ; skip user data
-    tile        w12, w13, w15, w16
-    add         w13, w13, TILE_WIDTH
-    subs        w14, w14, 1
+    ldr         w6, [x1], 4       ; tile number
+    ldr         w7, [x1], 4       ; palette
+    add         w1, w1, 8         ; skip user data
+    tile        w3, w4, w6, w7
+    add         w4, w4, TILE_WIDTH
+    subs        w5, w5, 1
     b.ne        .bg_tile
-    mov         w13, 0
-    add         w12, w12, TILE_HEIGHT
-    subs        w11, w11, 1
+    mov         w4, 0
+    add         w3, w3, TILE_HEIGHT
+    subs        w2, w2, 1
     b.ne        .bg_row
 
-    ; sprite render loop
-    adr         x10, sprite_control
-    mov         w11, 128
+    adr         x1, sprite_control
+    mov         w2, 128
 .sprite_tile:
-    ldr         w12, [x10], 4       ; tile number
-    ldr         w13, [x10], 4       ; y position
-    ldr         w14, [x10], 4       ; x position
-    ldr         w15, [x10], 4       ; palette number
-    ldr         w16, [x10], 4       ; flags
-    add         x10, x10, 4         ; skip user flags
-    stamp       w13, w14, w12, w15
-    subs        w11, w11, 1
+    ldr         w3, [x1], 4         ; tile number
+    ldr         w4, [x1], 4         ; y position
+    ldr         w5, [x1], 4         ; x position
+    ldr         w6, [x1], 4         ; palette number
+    ldr         w7, [x1], 4         ; flags
+    add         w1, w1, 4         ; skip user flags
+    stamp       w4, w5, w3, w6
+    subs        w2, w2, 1
     b.ne        .sprite_tile
 
+    ldp         x0, x30, [sp]
+    ldp         x1, x2, [sp, #16]
+    ldp         x3, x4, [sp, #32]
+    ldp         x5, x6, [sp, #48]
+    ldp         x7, x8, [sp, #64]
+    add         sp, sp, #80
     ret
 
 ; =========================================================
@@ -257,6 +366,13 @@ game_tick:
 ; Data Section
 ;
 ; =========================================================
+SPR_TILE  = 0
+SPR_Y_POS = 4
+SPR_X_POS = 8
+SPR_PAL   = 12
+SPR_FLAGS = 16
+SPR_USER  = 20
+
 align 4
 sprite_control:
 rept 128 {
@@ -267,6 +383,11 @@ rept 128 {
     dw  0       ; flags: hflip, vflip, rotate, etc....
     dw  0       ; user data
 }
+
+BG_TILE  = 0
+BG_PAL   = 4
+BG_USER1 = 8
+BG_USER2 = 12
 
 align 4
 background_control:
