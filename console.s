@@ -86,7 +86,7 @@ macro error str, len {
 
 macro log_reg reg, name {
     con_write   name, REG_LABEL_LEN, $0f
-    str_hex8    reg, number_buffer + 1
+    str_hex32   reg, number_buffer + 1
     con_write   number_buffer, 9, $0f
     bl          console_caret_nl
 }
@@ -119,7 +119,7 @@ caret_color:    db  $f
 caret_show:     db  1
 
 str_number_buffer:  dw  9
-number_buffer:      db  '$', 8 dup(CHAR_SPACE)
+number_buffer:      db  '$', 9 dup(CHAR_SPACE)
 
 DEBUG_HERE_LEN = 9
 debug_here1: db ">>> here1"

@@ -104,7 +104,7 @@ commands:
 
     cmddef cmd_dump_mem, "m", \
         "Dump a range of memory as a hex byte and ASCII table.", \
-        cmd_dump_func, \
+        cmd_dump_mem_func, \
         0
 
     cmddef cmd_clear, "clear", \
@@ -293,7 +293,7 @@ cmd_help_func:
 
 ; =========================================================
 ;
-; cmd_dump_func
+; cmd_dump_mem_func
 ;
 ; stack:
 ;   (none)
@@ -302,12 +302,46 @@ cmd_help_func:
 ;   (none)
 ;
 ; =========================================================
-cmd_dump_func:
-    sub         sp, sp, #16
+cmd_dump_mem_func:
+    sub         sp, sp, #48
     stp         x0, x30, [sp]
+    stp         x1, x2, [sp, #16]
+    stp         x3, x4, [sp, #32]
+
     info        cmd_dump_msg, 20
+    
+    adr         x0, commands
+    mov         w1, 128
+.line:    
+    mov         w2, 8 
+    str_hex32   w0, number_buffer + 1
+    uart_strl   number_buffer + 1, 8
+    uart_chr    ':'
+    uart_spc
+.byte:
+    ldrb        w3, [x0], 1
+    str_hex8    w3, number_buffer + 1
+    uart_strl   number_buffer + 1, 2
+    uart_spc
+    subs        w2, w2, 1
+    b.ne        .byte
+    uart_spc
+    uart_spc
+    mov         w2, 8
+    sub         w0, w0, w2
+.ascii:
+    ldrb        w3, [x0], 1
+    uart_chr    w3
+    subs        w2, w2, 1
+    b.ne        .ascii
+    uart_nl
+    subs        w1, w1, 8
+    b.ne        .line
+
     ldp         x0, x30, [sp]
-    add         sp, sp, #16
+    ldp         x1, x2, [sp, #16]
+    ldp         x3, x4, [sp, #32]
+    add         sp, sp, #48
     ret
 
 ; =========================================================

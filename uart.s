@@ -76,14 +76,18 @@ macro uart_chr char {
 }
 
 macro uart_str label* {
-    adr         x1, label
-    ldr         w2, [x1], 4
+    sub         sp, sp, #16
+    adr         x20, label
+    ldr         w21, [x20], 4
+    stp         x20, x21, [sp]
     bl          uart_send_string
 }
 
 macro uart_strl label*, len* {
-    adr         x1, label
-    mov         w2, len
+    sub         sp, sp, #16
+    adr         x20, label
+    mov         w21, len
+    stp         x20, x21, [sp]
     bl          uart_send_string
 }
 
@@ -244,31 +248,32 @@ uart_send_hex:
 ; uart_send_string
 ;
 ; stack:
-;   (none)
+;   str_ptr
+;   len
 ;
 ; registers:
-;   w0 scratch register
-;   w1 pointer to string
-;   w2 number of characters
-;   w3 scratch register
+;   (none)
 ;
 ; =========================================================
 uart_send_string:
-    sub         sp, sp, #16
-    stp         x0, x30, [sp]        
+    sub         sp, sp, #48
+    stp         x0, x30, [sp]
+    stp         x1, x2, [sp, #16]
+    stp         x3, x4, [sp, #32]
+    ldp         x1, x2, [sp, #48]
     pload       x0, w0, aux_base
 .next:  
     ldr         w3, [x0, AUX_MU_LSR_REG]
     ands        w3, w3, $20
-    b.ne        .ready
-    b           .next
-.ready: 
+    b.eq        .next
     ldrb        w3, [x1], 1
     str         w3, [x0, AUX_MU_IO_REG]
     subs        w2, w2, 1
     b.ne        .next
     ldp         x0, x30, [sp]
-    add         sp, sp, #16
+    ldp         x1, x2, [sp, #16]
+    ldp         x3, x4, [sp, #32]
+    add         sp, sp, #64
     ret
 
 ; =========================================================

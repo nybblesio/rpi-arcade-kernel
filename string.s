@@ -31,7 +31,7 @@
 ; Macros
 ;
 ; =========================================================
-macro str_hex2 value, dest {
+macro str_hex8 value, dest {
     sub         sp, sp, #32
     mov         w20, value
     mov         w21, 8
@@ -42,7 +42,7 @@ macro str_hex2 value, dest {
     bl          string_hex
 }
 
-macro str_hex4 value, dest {
+macro str_hex16 value, dest {
     sub         sp, sp, #32
     mov         w20, value
     mov         w21, 16
@@ -53,7 +53,7 @@ macro str_hex4 value, dest {
     bl          string_hex
 }
 
-macro str_hex8 value, dest {
+macro str_hex32 value, dest {
     sub         sp, sp, #32
     mov         w20, value
     mov         w21, 32
