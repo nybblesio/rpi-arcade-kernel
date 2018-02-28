@@ -129,40 +129,6 @@ JOY_B      = 0000000000000000_1000000000000000b
 
 ; =========================================================
 ;
-; Data Section
-;
-; =========================================================
-align 4
-joy0_state: dw 0
-joy0_r:     db 0
-joy0_l:     db 0
-joy0_x:     db 0
-joy0_a:     db 0
-joy0_right: db 0
-joy0_left:  db 0
-joy0_down:  db 0
-joy0_up:    db 0
-joy0_start: db 0
-joy0_select:db 0
-joy0_y:     db 0
-joy0_b:     db 0
-
-joy1_state: dw 0
-joy1_r:     db 0
-joy1_l:     db 0
-joy1_x:     db 0
-joy1_a:     db 0
-joy1_right: db 0
-joy1_left:  db 0
-joy1_down:  db 0
-joy1_up:    db 0
-joy1_start: db 0
-joy1_select:db 0
-joy1_y:     db 0
-joy1_b:     db 0
-
-; =========================================================
-;
 ; joy_read
 ;
 ; stack:

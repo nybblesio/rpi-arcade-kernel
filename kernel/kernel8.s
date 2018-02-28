@@ -165,15 +165,53 @@ core_three:
 
 ; =========================================================
 ;
-; Game Interface Section
+; Kernel/Game Interface Section
 ;
 ; =========================================================
-include 'game_abi.s'
+org KERNEL_ABI_BOTTOM
 
-org GAME_ABI_BOTTOM
+include 'kernel_abi.s'
 
-game_init_vector    dw  0
-game_tick_vector    dw  0
+align 4
+joy0_state: dw 0
+joy0_r:     db 0
+joy0_l:     db 0
+joy0_x:     db 0
+joy0_a:     db 0
+joy0_right: db 0
+joy0_left:  db 0
+joy0_down:  db 0
+joy0_up:    db 0
+joy0_start: db 0
+joy0_select:db 0
+joy0_y:     db 0
+joy0_b:     db 0
+
+align 4
+joy1_state: dw 0
+joy1_r:     db 0
+joy1_l:     db 0
+joy1_x:     db 0
+joy1_a:     db 0
+joy1_right: db 0
+joy1_left:  db 0
+joy1_down:  db 0
+joy1_up:    db 0
+joy1_start: db 0
+joy1_select:db 0
+joy1_y:     db 0
+joy1_b:     db 0
+
+org KERNEL_ABI_TOP
+
+game_top:
+
+game_init_vector: dw    ?
+game_tick_vector: dw    ? 
+
+title:            db    64 dup(?)
+version:          db    ?
+revision:         db    ?
 
 ; =========================================================
 ;
