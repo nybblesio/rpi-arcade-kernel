@@ -307,9 +307,7 @@ cmd_dump_mem_func:
     stp         x0, x30, [sp]
     stp         x1, x2, [sp, #16]
     stp         x3, x4, [sp, #32]
-
     info        cmd_dump_msg, 20
-    
     adr         x0, commands
     mov         w1, 128
 .line:    

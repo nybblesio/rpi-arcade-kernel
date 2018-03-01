@@ -69,6 +69,85 @@ macro str_isprt value {
     bl          string_isprt
 }
 
+macro str_nbr   lbl, len, base {
+    sub         sp, sp, #32
+    adr         x20, lbl
+    mov         w21, len
+    stp         x20, x21, [sp]
+    mov         w20, base
+    mov         w21, 0
+    stp         x20, x21, [sp, #16]
+    bl          string_number
+    ldp         x20, x21, [sp]
+    add         sp, sp, #16
+}
+
+; =========================================================
+;
+; string_number
+;
+; stack:
+;   str_ptr
+;   len
+;   base
+;   pad
+;
+;   value (output)
+;   pad (output)
+;
+; registers:
+;   (none)
+;
+; =========================================================
+string_number:
+    sub         sp, sp, #80
+    stp         x0, x30, [sp]
+    stp         x1, x2, [sp, #16]
+    stp         x3, x4, [sp, #32]
+    stp         x5, x6, [sp, #48]
+    stp         x7, x8, [sp, #64]
+    ldp         x1, x2, [sp, #80]   ; str, len
+    ldp         x3, x4, [sp, #96]   ; base, pad
+    mov         w7, 0               ; accumulator
+    cbz         w2, .exit
+    mov         w6, 0               ; not negative
+    ldrb        w5, [x1]
+    cmp         w5, '-'
+    b.ne        .parse
+    mov         w6, 1               ; negative
+    add         w1, w1, 1
+    subs        w2, w2, 1
+    b.eq        .exit               ; if length is only 1 and it was '-', bail
+.loop:
+    mul         w7, w7, w3          ; multiply acc by base
+    ldrb        w5, [x1]
+.parse:    
+    subs        w5, w5, '0'         ; < '0'
+    b.lo        .done
+    cmp         w5, $10             
+    b.ls        .check
+    subs        w5, w5, $17         
+    add         w5, w5, $10
+.check:
+    cmp         w5, w3
+    b.hs        .done
+    add         w7, w7, w5
+    add         w1, w1, 1
+    subs        w2, w2, 1
+    b.ne        .loop
+.done:
+    cbz         w6, .exit
+    neg         w7, w7
+.exit:
+    stp         x7, x3, [sp, #96]   ; return values
+    ldp         x0, x30, [sp]
+    ldp         x1, x2, [sp, #16]
+    ldp         x3, x4, [sp, #32]
+    ldp         x5, x6, [sp, #48]
+    ldp         x7, x8, [sp, #64]
+    add         sp, sp, #96         
+    ret
+
 ; =========================================================
 ;
 ; string_isprt

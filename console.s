@@ -96,6 +96,11 @@ macro info_reg reg, name {
     log_reg     reg, name
 }
 
+macro debug_reg reg, name {
+    con_write   debug_level, LEVEL_LABEL_LEN, $04
+    log_reg     reg, name
+}
+
 macro log_label label, name {
 }
 
@@ -126,6 +131,13 @@ debug_here1: db ">>> here1"
 debug_here2: db ">>> here2"
 debug_here3: db ">>> here3"
 debug_here4: db ">>> here4"
+debug_here5: db ">>> here5"
+debug_here6: db ">>> here6"
+debug_here7: db ">>> here7"
+debug_here8: db ">>> here8"
+
+DEBUG_BREAK_LEN = 16
+debug_break: db "----------------"
 
 REG_LABEL_LEN = 6
 reg_w0:  db "w0  = "
