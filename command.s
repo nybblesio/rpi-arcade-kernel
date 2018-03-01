@@ -29,10 +29,8 @@
 ; Constants Section
 ;
 ; =========================================================
-F_PARAM_TYPE_REGISTER = 00000001b
-F_PARAM_TYPE_NUMBER   = 00000010b
-F_PARAM_TYPE_BOOLEAN  = 00000100b
-F_PARAM_TYPE_STRING   = 00001000b
+PARAM_TYPE_REGISTER = 1
+PARAM_TYPE_NUMBER   = 2
 
 TOKEN_OFFSET_COUNT    = 32
 
@@ -42,6 +40,11 @@ CMD_DEF_DESC_LEN      = 17
 CMD_DEF_DESC          = 18
 CMD_DEF_CALLBACK      = 248
 CMD_DEF_PARAM_COUNT   = 252
+
+PARAM_DEF_NAME_LEN    = 0
+PARAM_DEF_NAME        = 1
+PARAM_DEF_TYPE        = 29
+PARAM_DEF_REQUIRED    = 30
 
 ; =========================================================
 ;
@@ -56,7 +59,7 @@ label lbl
 .start:        
     db  name
 .end:
-    db  29 - (.end - .start) dup (CHAR_SPACE)
+    db  28 - (.end - .start) dup (CHAR_SPACE)
     db  type
     db  required
 }
@@ -95,6 +98,11 @@ align 4
 token_offsets:
     db  TOKEN_OFFSET_COUNT dup(0)
 
+PARAMS_COUNT = 8
+align 4
+params:
+    dw  PARAMS_COUNT dup(0)
+
 align 4
 commands:
     cmddef cmd_help, "help", \
@@ -105,7 +113,9 @@ commands:
     cmddef cmd_dump_mem, "m", \
         "Dump a range of memory as a hex byte and ASCII table.", \
         cmd_dump_mem_func, \
-        0
+        2
+    parmdef cmd_dump_mem_addr, "addr", PARAM_TYPE_NUMBER, TRUE
+    parmdef cmd_dump_mem_size, "size", PARAM_TYPE_NUMBER, TRUE
 
     cmddef cmd_clear, "clear", \
         "Clears the terminal and places the next command line at the top.", \
@@ -130,8 +140,8 @@ commands:
     cmddef cmd_dump_reg, "r", \
         "Dump the value of the specified register.", \
         cmd_reg_func, \
-        0
-    ;parmdef cmd_dump_reg_param, "register", F_PARAM_TYPE_REGISTER, FALSE
+        1
+    parmdef cmd_dump_reg_param, "register", PARAM_TYPE_REGISTER, FALSE
 
     ; end sentinel
     dw          0
@@ -308,8 +318,13 @@ cmd_dump_mem_func:
     stp         x1, x2, [sp, #16]
     stp         x3, x4, [sp, #32]
     info        cmd_dump_msg, 20
-    adr         x0, commands
+    ;adr         x2, params
+    ;ldr         w0, [x2, 0]             ; address
+    ;ldr         w1, [x2, 4]             ; size
+    ;cbnz        w1, .line
+    mov         w0, 0
     mov         w1, 128
+
 .line:    
     mov         w2, 8 
     str_hex32   w0, number_buffer + 1
@@ -559,11 +574,15 @@ cmd_reset_func:
 ;
 ; =========================================================
 command_find:
-    sub         sp, sp, #64
+    sub         sp, sp, #112
     stp         x0, x30, [sp]
     stp         x2, x3, [sp, #16]
     stp         x4, x5, [sp, #32]
     stp         x6, x7, [sp, #48]
+    stp         x8, x9, [sp, #64]
+    stp         x10, x11, [sp, #80]
+    stp         x12, x13, [sp, #96]
+
     ploadb      x0, w0, token_offsets
     cbz         w0, .notfound
     adr         x1, commands
@@ -578,20 +597,100 @@ command_find:
     stp         x2, x0, [sp, #16]
     bl          string_eq
     cbnz        w1, .found
+    mov         w5, 32          ; size of parameter structure
     mov         w1, w6
+    ldr         w4, [x1, CMD_DEF_PARAM_COUNT]
+    mul         w4, w4, w5
     add         w1, w1, 256
+    add         w1, w1, w4      ; bytes of parameters
     b           .loop
 .found:
+    debug       debug_here1, DEBUG_HERE_LEN
+
     mov         w1, w6
+    ldr         w3, [x1, CMD_DEF_PARAM_COUNT]
+    cbz         w3, .done
+    add         w6, w6, 256
+    adr         x4, token_offsets
+    add         w4, w4, 1
+    adr         x7, params
+    mov         x8, 0
+    str         x8, [x7, 0]
+    str         x8, [x7, 8]
+    str         x8, [x7, 16]
+    str         x8, [x7, 24]
+.param:
+    cbz         w0, .done
+    add         w2, w2, w0
+    ldrb        w0, [x4], 1
+    mov         w11, w0
+    ldrb        w8, [x6, PARAM_DEF_TYPE]
+    ldrb        w9, [x6, PARAM_DEF_REQUIRED]
+
+    mov         w12, 10
+    cmp         w8, PARAM_TYPE_REGISTER
+    b.ne        .number_type
+    ldrb        w10, [x2]
+    cmp         w10, 'w'
+    b.ne        .error
+    add         w2, w2, 1
+    sub         w11, w11, 1
+    b           .num
+.number_type:
+    debug       debug_here2, DEBUG_HERE_LEN
+
+    cmp         w8, PARAM_TYPE_NUMBER
+    b.ne        .error
+    ldrb        w10, [x2]
+    cmp         w10, '%'
+    b.ne        .hex
+    mov         w12, 2
+    add         w2, w2, 1
+    sub         w11, w11, 1
+    b           .num
+.hex:    
+    cmp         w10, '$'
+    b.ne        .octal
+
+    debug       debug_here4, DEBUG_HERE_LEN
+
+    mov         w12, 16
+    add         w2, w2, 1
+    sub         w11, w11, 1 
+    b           .num
+.octal:    
+    cmp         w10, '@'
+    b.ne        .num
+    mov         w12, 8
+    add         w2, w2, 1
+    sub         w11, w11, 1
+    b           .num
+.num:
+    debug_reg   w2, reg_w2
+    debug_reg   w11, reg_w11
+    debug_reg   w12, reg_w12
+    str_nbr     w2, w11, w12
+    debug_reg   w20, reg_w20
+    str         w20, [x7], 4
+.next:
+    add         w6, w6, w5
+    subs        w4, w4, 1
+    b.ne        .param
+    b           .done
+.error:
+    debug       debug_here3, DEBUG_HERE_LEN
     b           .done
 .notfound:
     mov         w1, 0
-.done:    
+.done:
     ldp         x0, x30, [sp]
     ldp         x2, x3, [sp, #16]
     ldp         x4, x5, [sp, #32]
     ldp         x6, x7, [sp, #48]
-    add         sp, sp, #64
+    ldp         x8, x9, [sp, #64]
+    ldp         x10, x11, [sp, #80]
+    ldp         x12, x13, [sp, #96]
+    add         sp, sp, #112
     ret
 
 ; =========================================================

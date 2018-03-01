@@ -39,23 +39,23 @@ LINES_PER_PAGE = (SCREEN_HEIGHT - (TOP_MARGIN + BOTTOM_MARGIN)) / (FONT_HEIGHT +
 ; =========================================================
 macro con_caret ypos, xpos, color {
     sub         sp, sp, #32
-    mov         x20, ypos
-    mov         x21, xpos
-    stp         x20, x21, [sp]
-    mov         x20, color
-    mov         x21, 0
-    stp         x20, x21, [sp, #16]
+    mov         x25, ypos
+    mov         x26, xpos
+    stp         x25, x26, [sp]
+    mov         x25, color
+    mov         x26, 0
+    stp         x25, x26, [sp, #16]
     bl          console_caret
 }
 
 macro con_write str, len, color {
     sub         sp, sp, #32
-    mov         x20, str
-    mov         x21, len
-    stp         x20, x21, [sp]
-    mov         x20, color
-    mov         x21, 0
-    stp         x20, x21, [sp, #16]
+    mov         x25, str
+    mov         x26, len
+    stp         x25, x26, [sp]
+    mov         x25, color
+    mov         x26, 0
+    stp         x25, x26, [sp, #16]
     bl          console_write
 }
 

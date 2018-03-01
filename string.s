@@ -71,7 +71,7 @@ macro str_isprt value {
 
 macro str_nbr   lbl, len, base {
     sub         sp, sp, #32
-    adr         x20, lbl
+    mov         w20, lbl
     mov         w21, len
     stp         x20, x21, [sp]
     mov         w20, base
