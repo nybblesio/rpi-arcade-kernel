@@ -64,6 +64,37 @@ macro str_hex32 value, dest {
     bl          string_hex
 }
 
+macro str_isprt value {
+    mov         w20, value
+    bl          string_isprt
+}
+
+; =========================================================
+;
+; string_isprt
+;
+; stack:
+;   (none)
+;
+; registers:
+;   w20 value to check
+;   w21 result (1 yes, 0 no)
+;
+; =========================================================
+string_isprt:
+    sub         sp, sp, #16
+    stp         x0, x30, [sp]
+    mov         w21, 0
+    cmp         w20, $7f        ; DEL
+    b.eq        .done
+    cmp         w20, $1f
+    b.ls        .done
+    mov         w21, 1
+.done:    
+    ldp         x0, x30, [sp]
+    add         sp, sp, #16
+    ret
+
 ; =========================================================
 ;
 ; string_hex

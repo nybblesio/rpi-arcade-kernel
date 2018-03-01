@@ -331,7 +331,13 @@ cmd_dump_mem_func:
     sub         w0, w0, w2
 .ascii:
     ldrb        w3, [x0], 1
+    str_isprt   w3
+    cbz         w21, .ctrl
     uart_chr    w3
+    b           .next
+.ctrl:
+    uart_chr    '.'
+.next:    
     subs        w2, w2, 1
     b.ne        .ascii
     uart_nl
