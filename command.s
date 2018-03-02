@@ -452,17 +452,23 @@ cmd_joy0_func:
     ploadb      x0, w0, joy0_r
     uart_strl   cmd_joy_r, JOY_LABEL_LEN
     uart_hex8   w0
-    uart_nl
+    uart_spc
+    uart_chr    '|'
+    uart_spc
 
     ploadb      x0, w0, joy0_l
     uart_strl   cmd_joy_l, JOY_LABEL_LEN
     uart_hex8   w0
-    uart_nl
+    uart_spc
+    uart_chr    '|'
+    uart_spc
 
     ploadb      x0, w0, joy0_x
     uart_strl   cmd_joy_x, JOY_LABEL_LEN
     uart_hex8   w0
-    uart_nl
+    uart_spc
+    uart_chr    '|'
+    uart_spc
 
     ploadb      x0, w0, joy0_a
     uart_strl   cmd_joy_a, JOY_LABEL_LEN
@@ -472,17 +478,23 @@ cmd_joy0_func:
     ploadb      x0, w0, joy0_right
     uart_strl   cmd_joy_right, JOY_LABEL_LEN
     uart_hex8   w0
-    uart_nl
+    uart_spc
+    uart_chr    '|'
+    uart_spc
 
     ploadb      x0, w0, joy0_left
     uart_strl   cmd_joy_left, JOY_LABEL_LEN
     uart_hex8   w0
-    uart_nl
+    uart_spc
+    uart_chr    '|'
+    uart_spc
 
     ploadb      x0, w0, joy0_down
     uart_strl   cmd_joy_down, JOY_LABEL_LEN
     uart_hex8   w0
-    uart_nl
+    uart_spc
+    uart_chr    '|'
+    uart_spc
 
     ploadb      x0, w0, joy0_up
     uart_strl   cmd_joy_up, JOY_LABEL_LEN
@@ -492,17 +504,23 @@ cmd_joy0_func:
     ploadb      x0, w0, joy0_start
     uart_strl   cmd_joy_start, JOY_LABEL_LEN
     uart_hex8   w0
-    uart_nl
+    uart_spc
+    uart_chr    '|'
+    uart_spc
 
     ploadb      x0, w0, joy0_select
     uart_strl   cmd_joy_select, JOY_LABEL_LEN
     uart_hex8   w0
-    uart_nl
+    uart_spc
+    uart_chr    '|'
+    uart_spc
 
     ploadb      x0, w0, joy0_y
     uart_strl   cmd_joy_y, JOY_LABEL_LEN
     uart_hex8   w0
-    uart_nl
+    uart_spc
+    uart_chr    '|'
+    uart_spc
 
     ploadb      x0, w0, joy0_b
     uart_strl   cmd_joy_b, JOY_LABEL_LEN
@@ -531,17 +549,23 @@ cmd_joy1_func:
     ploadb      x0, w0, joy1_r
     uart_strl   cmd_joy_r, JOY_LABEL_LEN
     uart_hex8   w0
-    uart_nl
+    uart_spc
+    uart_chr    '|'
+    uart_spc
 
     ploadb      x0, w0, joy1_l
     uart_strl   cmd_joy_l, JOY_LABEL_LEN
     uart_hex8   w0
-    uart_nl
+    uart_spc
+    uart_chr    '|'
+    uart_spc
 
     ploadb      x0, w0, joy1_x
     uart_strl   cmd_joy_x, JOY_LABEL_LEN
     uart_hex8   w0
-    uart_nl
+    uart_spc
+    uart_chr    '|'
+    uart_spc
 
     ploadb      x0, w0, joy1_a
     uart_strl   cmd_joy_a, JOY_LABEL_LEN
@@ -551,17 +575,23 @@ cmd_joy1_func:
     ploadb      x0, w0, joy1_right
     uart_strl   cmd_joy_right, JOY_LABEL_LEN
     uart_hex8   w0
-    uart_nl
+    uart_spc
+    uart_chr    '|'
+    uart_spc
 
     ploadb      x0, w0, joy1_left
     uart_strl   cmd_joy_left, JOY_LABEL_LEN
     uart_hex8   w0
-    uart_nl
+    uart_spc
+    uart_chr    '|'
+    uart_spc
 
     ploadb      x0, w0, joy1_down
     uart_strl   cmd_joy_down, JOY_LABEL_LEN
     uart_hex8   w0
-    uart_nl
+    uart_spc
+    uart_chr    '|'
+    uart_spc
 
     ploadb      x0, w0, joy1_up
     uart_strl   cmd_joy_up, JOY_LABEL_LEN
@@ -571,17 +601,23 @@ cmd_joy1_func:
     ploadb      x0, w0, joy1_start
     uart_strl   cmd_joy_start, JOY_LABEL_LEN
     uart_hex8   w0
-    uart_nl
+    uart_spc
+    uart_chr    '|'
+    uart_spc
 
     ploadb      x0, w0, joy1_select
     uart_strl   cmd_joy_select, JOY_LABEL_LEN
     uart_hex8   w0
-    uart_nl
+    uart_spc
+    uart_chr    '|'
+    uart_spc
 
     ploadb      x0, w0, joy1_y
     uart_strl   cmd_joy_y, JOY_LABEL_LEN
     uart_hex8   w0
-    uart_nl
+    uart_spc
+    uart_chr    '|'
+    uart_spc
 
     ploadb      x0, w0, joy1_b
     uart_strl   cmd_joy_b, JOY_LABEL_LEN
