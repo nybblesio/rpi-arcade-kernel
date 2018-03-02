@@ -165,6 +165,10 @@ term_update:
    pload    x5, w5, command_buffer_offset
    mov      w6, TOKEN_OFFSET_COUNT
 
+;
+; m $C000 $FF
+;  ^     ^  ^
+
 .char:  
    cmp      w4, w5
    b.eq     .bufend

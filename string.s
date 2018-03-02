@@ -33,37 +33,38 @@
 ; =========================================================
 macro str_hex8 value, dest {
     sub         sp, sp, #32
-    mov         w20, value
-    mov         w21, 8
-    stp         x20, x21, [sp]
-    mov         w20, dest
-    mov         w21, 0
-    stp         x20, x21, [sp, #16]
+    mov         w25, value
+    mov         w26, 8
+    stp         x25, x26, [sp]
+    mov         w25, dest
+    mov         w26, 0
+    stp         x25, x26, [sp, #16]
     bl          string_hex
 }
 
 macro str_hex16 value, dest {
     sub         sp, sp, #32
-    mov         w20, value
-    mov         w21, 16
-    stp         x20, x21, [sp]
-    mov         w20, dest
-    mov         w21, 0
-    stp         x20, x21, [sp, #16]
+    mov         w25, value
+    mov         w26, 16
+    stp         x25, x26, [sp]
+    mov         w25, dest
+    mov         w26, 0
+    stp         x25, x26, [sp, #16]
     bl          string_hex
 }
 
 macro str_hex32 value, dest {
     sub         sp, sp, #32
-    mov         w20, value
-    mov         w21, 32
-    stp         x20, x21, [sp]
-    mov         w20, dest
-    mov         w21, 0
-    stp         x20, x21, [sp, #16]
+    mov         w25, value
+    mov         w26, 32
+    stp         x25, x26, [sp]
+    mov         w25, dest
+    mov         w26, 0
+    stp         x25, x26, [sp, #16]
     bl          string_hex
 }
 
+; TODO: this is unsafe
 macro str_isprt value {
     mov         w20, value
     bl          string_isprt

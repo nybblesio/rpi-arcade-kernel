@@ -14,13 +14,34 @@ Questions & Ponderings
     ; Set fake_vsync_isr=1 in config.txt and I will trigger the SMI interrupt (48) from my vsync callback.
     ; In your ISR, you should write 0 to SMICS (0x7E600000/0x20600000) to clear it.
 
-- what commands do we want?
-
 Tasks
 -----
 
-- FIX: joy_read is probably clocking the controller way too fast. Use ARM_TIMER for better control.
+- str_isprt: not using the stack, stomping w20
 
+- command_find: add errors to a small buffer for output in terminal
+
+- command_find: renumber & save all state
+
+- params array should be an array of small structures that has type and word value combined
+
+- FIX: check parameter length in command_buffer against 0 to prevent underflow
+
+- FIX: cmd_dump_mem_func is dumping extra ASCII on remainder
+       fix ASCII offset for remainer lines
+
+- command: fps
+
+- command: install
+
+- command: info
+    - return game title, autor, verison, revision information
+
+- command: run
+
+- command: stop
+
+- command: init
 
 KERNEL
 ------
@@ -93,3 +114,4 @@ DONE
 - uart_getc function
 - uart_putc function
 - uart_putstr function
+- FIX: joy_read is probably clocking the controller way too fast. Use ARM_TIMER for better control.

@@ -59,50 +59,77 @@ macro con_write str, len, color {
     bl          console_write
 }
 
-macro log str, len {
-    con_write   str, len, $0f
+macro log [params] {
+    local       .start, .end, .skip
+    b           .skip
+.start:
+    strlist     params
+.end:
+    align 4
+.skip:    
+    con_write   .start, .end - .start, $0f
+}
+
+macro log_nl [params] {
+    log         params
     bl          console_caret_nl
 }
 
-macro info str, len {
-    con_write   info_level, LEVEL_LABEL_LEN, $04
-    log         str, len
+macro log_level level, color, [params] {
+    con_write   level, LEVEL_LABEL_LEN, color
+    log_nl      params
 }
 
-macro debug str, len {
-    con_write   debug_level, LEVEL_LABEL_LEN, $04
-    log         str, len
+macro info [params] {
+    log_level   info_level, $04, params
 }
 
-macro warn str, len {
-    con_write   warn_level, LEVEL_LABEL_LEN, $09
-    log         str, len
+macro debug [params] {
+    log_level   debug_level, $04, params
 }
 
-macro error str, len {
-    con_write   error_level, LEVEL_LABEL_LEN, $03
-    log         str, len
+macro warn [params] {
+    log_level   warn_level, $09, params
 }
 
-macro log_reg reg, name {
+macro error [params] {
+    log_level   error_level, $03, params
+}
+
+macro log_reg level, color, reg, name, [params] {
+    con_write   level, LEVEL_LABEL_LEN, color
+    log         params
     con_write   name, REG_LABEL_LEN, $0f
     str_hex32   reg, number_buffer + 1
     con_write   number_buffer, 9, $0f
     bl          console_caret_nl
 }
 
-macro info_reg reg, name {
-    con_write   info_level, LEVEL_LABEL_LEN, $04
-    log_reg     reg, name
+macro info_reg reg, name, [params] {
+    log_reg     info_level, $04, reg, name, params
 }
 
-macro debug_reg reg, name {
-    con_write   debug_level, LEVEL_LABEL_LEN, $04
-    log_reg     reg, name
+macro debug_reg reg, name, [params] {
+    log_reg     info_level, $04, reg, name, params
 }
 
-macro log_label label, name {
+macro log_label level, color, label, [params] {
+    con_write   level, LEVEL_LABEL_LEN, color
+    log         params
+    adr         x20, label
+    str_hex32   w20, number_buffer + 1
+    con_write   number_buffer, 9, $0f
+    bl          console_caret_nl
 }
+
+macro info_label label, [params] {
+    log_label   info_level, $04, label, params
+}
+
+macro debug_label label, [params] {
+    log_label   debug_level, $04, label, params
+}
+
 
 ; =========================================================
 ;
@@ -125,19 +152,6 @@ caret_show:     db  1
 
 str_number_buffer:  dw  9
 number_buffer:      db  '$', 9 dup(CHAR_SPACE)
-
-DEBUG_HERE_LEN = 9
-debug_here1: db ">>> here1"
-debug_here2: db ">>> here2"
-debug_here3: db ">>> here3"
-debug_here4: db ">>> here4"
-debug_here5: db ">>> here5"
-debug_here6: db ">>> here6"
-debug_here7: db ">>> here7"
-debug_here8: db ">>> here8"
-
-DEBUG_BREAK_LEN = 16
-debug_break: db "----------------"
 
 REG_LABEL_LEN = 6
 reg_w0:  db "w0  = "

@@ -43,8 +43,8 @@ CMD_DEF_PARAM_COUNT   = 252
 
 PARAM_DEF_NAME_LEN    = 0
 PARAM_DEF_NAME        = 1
-PARAM_DEF_TYPE        = 29
-PARAM_DEF_REQUIRED    = 30
+PARAM_DEF_TYPE        = 30
+PARAM_DEF_REQUIRED    = 31
 
 ; =========================================================
 ;
@@ -52,16 +52,16 @@ PARAM_DEF_REQUIRED    = 30
 ;
 ; =========================================================
 macro parmdef lbl, name, type, required {
-align 4
 label lbl
-    local   .end, .start
-    db .end - .start
+    local .end, .start
+    db  .end - .start
 .start:        
     db  name
 .end:
-    db  28 - (.end - .start) dup (CHAR_SPACE)
+    db  29 - (.end - .start) dup (CHAR_SPACE)
     db  type
     db  required
+label lbl # _end
 }
 
 macro cmddef lbl, name, desc, callback, param_count {
@@ -80,6 +80,7 @@ label lbl
 
     dw  callback
     dw  param_count
+label lbl # _end    
 }
 
 ; =========================================================
@@ -160,14 +161,6 @@ cmd_joy_select: db "JOY_SELECT = "
 cmd_joy_y:      db "JOY_Y      = "
 cmd_joy_b:      db "JOY_B      = "
 
-cmd_j0_msg:     db "execute 'j0' command."
-cmd_j1_msg:     db "execute 'j1' command."
-cmd_reg_msg:    db "execute 'r' command."
-cmd_help_msg:   db "execute 'help' command."
-cmd_dump_msg:   db "execute 'm' command."
-cmd_clear_msg:  db "execute 'clear' command."
-cmd_reset_msg:  db "execute 'reset' command."
-
 align 16
 
 ; =========================================================
@@ -184,7 +177,7 @@ align 16
 cmd_reg_func:
     sub         sp, sp, #16
     stp         x0, x30, [sp]
-    info        cmd_reg_msg, 20
+    info        "Execute 'r' command in cmd_reg_func."
     uart_strl   reg_w0, REG_LABEL_LEN
     uart_hex32  w0
     uart_nl
@@ -296,7 +289,7 @@ cmd_reg_func:
 cmd_help_func:
     sub         sp, sp, #16
     stp         x0, x30, [sp]
-    info        cmd_help_msg, 23
+    info        "Execute 'help' command in cmd_help_func."
     ldp         x0, x30, [sp]
     add         sp, sp, #16
     ret
@@ -317,16 +310,18 @@ cmd_dump_mem_func:
     stp         x0, x30, [sp]
     stp         x1, x2, [sp, #16]
     stp         x3, x4, [sp, #32]
-    info        cmd_dump_msg, 20
-    ;adr         x2, params
-    ;ldr         w0, [x2, 0]             ; address
-    ;ldr         w1, [x2, 4]             ; size
-    ;cbnz        w1, .line
-    mov         w0, 0
+    info        "Execute 'm' command in cmd_dump_mem_func."
+    adr         x2, params
+    ldr         w0, [x2, 0]             ; address
+    ldr         w1, [x2, 4]             ; size
+    debug_reg   w0, reg_w0, "address: "
+    debug_reg   w1, reg_w1, "   size: "
+    cbnz        w1, .line
     mov         w1, 128
 
 .line:    
-    mov         w2, 8 
+    mov         w2, 8
+.remainder:    
     str_hex32   w0, number_buffer + 1
     uart_strl   number_buffer + 1, 8
     uart_chr    ':'
@@ -354,9 +349,17 @@ cmd_dump_mem_func:
     subs        w2, w2, 1
     b.ne        .ascii
     uart_nl
+    cmp         w1, 0
+    b.eq        .done
+    cmp         w1, 8
+    b.hs        .full_line
+    mov         w2, w1
+    mov         w1, 0
+    b           .remainder
+.full_line:
     subs        w1, w1, 8
     b.ne        .line
-
+.done:
     ldp         x0, x30, [sp]
     ldp         x1, x2, [sp, #16]
     ldp         x3, x4, [sp, #32]
@@ -378,7 +381,7 @@ cmd_joy0_func:
     sub         sp, sp, #32
     stp         x0, x30, [sp]
     stp         x1, x2, [sp, #16]
-    info        cmd_j0_msg, 21
+    info        "Execute 'j0' command in cmd_joy0_func."
     
     ploadb      x0, w0, joy0_r
     uart_strl   cmd_joy_r, JOY_LABEL_LEN
@@ -457,7 +460,7 @@ cmd_joy0_func:
 cmd_joy1_func:
     sub         sp, sp, #16
     stp         x0, x30, [sp]
-    info        cmd_j1_msg, 21
+    info        "Execute 'j1' command in cmd_joy1_func."
 
     ploadb      x0, w0, joy1_r
     uart_strl   cmd_joy_r, JOY_LABEL_LEN
@@ -536,7 +539,7 @@ cmd_joy1_func:
 cmd_clear_func:
     sub         sp, sp, #16
     stp         x0, x30, [sp]
-    info        cmd_clear_msg, 24
+    info        "Execute command 'clear' in cmd_clear_func."
     uart_str    clr_screen
     ldp         x0, x30, [sp]
     add         sp, sp, #16
@@ -556,7 +559,7 @@ cmd_clear_func:
 cmd_reset_func:
     sub         sp, sp, #16
     stp         x0, x30, [sp]
-    info        cmd_reset_msg, 24
+    info        "Execute command 'reset' in cmd_reset_func."
     bl          term_welcome
     ldp         x0, x30, [sp]
     add         sp, sp, #16
@@ -582,35 +585,33 @@ command_find:
     stp         x8, x9, [sp, #64]
     stp         x10, x11, [sp, #80]
     stp         x12, x13, [sp, #96]
-
     ploadb      x0, w0, token_offsets
     cbz         w0, .notfound
-    adr         x1, commands
-    adr         x2, command_buffer
-.loop:
-    ldrb        w3, [x1, CMD_DEF_NAME_LEN]
-    cbz         w3, .notfound
-    mov         w6, w1
-    add         w1, w1, 1
-    sub         sp, sp, #32
-    stp         x1, x3, [sp]
-    stp         x2, x0, [sp, #16]
-    bl          string_eq
-    cbnz        w1, .found
+    adr         x2, commands
+    adr         x3, command_buffer
     mov         w5, 32          ; size of parameter structure
-    mov         w1, w6
-    ldr         w4, [x1, CMD_DEF_PARAM_COUNT]
+.loop:
+    ldrb        w4, [x2, CMD_DEF_NAME_LEN]
+    cbz         w4, .notfound
+    add         w2, w2, 1
+    sub         sp, sp, #32
+    stp         x2, x4, [sp]
+    stp         x3, x0, [sp, #16]
+    bl          string_eq
+    sub         w2, w2, 1
+    cbnz        w1, .found
+    ldr         w4, [x2, CMD_DEF_PARAM_COUNT]
     mul         w4, w4, w5
-    add         w1, w1, 256
-    add         w1, w1, w4      ; bytes of parameters
+    info_reg    w4, reg_w4, "params size in bytes: "
+    add         w2, w2, 256
+    add         w2, w2, w4       
     b           .loop
 .found:
-    debug       debug_here1, DEBUG_HERE_LEN
-
-    mov         w1, w6
-    ldr         w3, [x1, CMD_DEF_PARAM_COUNT]
-    cbz         w3, .done
-    add         w6, w6, 256
+    debug       "found command match"
+    mov         w1, w2
+    ldr         w6, [x2, CMD_DEF_PARAM_COUNT]
+    cbz         w6, .done
+    add         w2, w2, 256
     adr         x4, token_offsets
     add         w4, w4, 1
     adr         x7, params
@@ -619,70 +620,77 @@ command_find:
     str         x8, [x7, 8]
     str         x8, [x7, 16]
     str         x8, [x7, 24]
+    add         w0, w0, 1
+    add         w3, w3, w0
 .param:
     cbz         w0, .done
-    add         w2, w2, w0
+    mov         w13, w0
     ldrb        w0, [x4], 1
-    mov         w11, w0
-    ldrb        w8, [x6, PARAM_DEF_TYPE]
-    ldrb        w9, [x6, PARAM_DEF_REQUIRED]
+    add         w0, w0, 1
+    sub         w11, w0, w13
+    sub         w11, w11, 1
+    debug_reg   w0, reg_w0, "new offset: "
+    debug_reg   w11, reg_w11, "new length: "
+    ldrb        w8, [x2, PARAM_DEF_TYPE]
+    ldrb        w9, [x2, PARAM_DEF_REQUIRED]
 
     mov         w12, 10
     cmp         w8, PARAM_TYPE_REGISTER
     b.ne        .number_type
-    ldrb        w10, [x2]
+    ldrb        w10, [x3]
     cmp         w10, 'w'
     b.ne        .error
-    add         w2, w2, 1
+    add         w3, w3, 1
     sub         w11, w11, 1
     b           .num
 .number_type:
-    debug       debug_here2, DEBUG_HERE_LEN
-
     cmp         w8, PARAM_TYPE_NUMBER
     b.ne        .error
-    ldrb        w10, [x2]
+    debug       "begin number_type parsing"
+    ldrb        w10, [x3]
     cmp         w10, '%'
     b.ne        .hex
     mov         w12, 2
-    add         w2, w2, 1
+    add         w3, w3, 1
     sub         w11, w11, 1
     b           .num
 .hex:    
     cmp         w10, '$'
     b.ne        .octal
 
-    debug       debug_here4, DEBUG_HERE_LEN
+    debug       "in hex parse case"
 
     mov         w12, 16
-    add         w2, w2, 1
+    add         w3, w3, 1
     sub         w11, w11, 1 
     b           .num
 .octal:    
     cmp         w10, '@'
     b.ne        .num
     mov         w12, 8
-    add         w2, w2, 1
+    add         w3, w3, 1
     sub         w11, w11, 1
     b           .num
 .num:
-    debug_reg   w2, reg_w2
-    debug_reg   w11, reg_w11
-    debug_reg   w12, reg_w12
-    str_nbr     w2, w11, w12
-    debug_reg   w20, reg_w20
+    ;debug_reg   w3,  reg_w3,  "address of command_buffer: "
+    ;debug_reg   w11, reg_w11, "length of parameter string: "
+    ;debug_reg   w12, reg_w12, "base for number conversion: "
+    str_nbr     w3, w11, w12
+    ;debug_reg   w20, reg_w20, "result number: "
     str         w20, [x7], 4
 .next:
-    add         w6, w6, w5
-    subs        w4, w4, 1
+    add         w3, w3, w11
+    add         w3, w3, 1
+    add         w2, w2, w5
+    subs        w6, w6, 1
     b.ne        .param
     b           .done
 .error:
-    debug       debug_here3, DEBUG_HERE_LEN
-    b           .done
+    debug       "param parse error"
 .notfound:
     mov         w1, 0
 .done:
+    debug_reg   w1, reg_w1, "address of command def: "
     ldp         x0, x30, [sp]
     ldp         x2, x3, [sp, #16]
     ldp         x4, x5, [sp, #32]
