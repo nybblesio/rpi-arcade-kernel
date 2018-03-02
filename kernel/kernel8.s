@@ -49,7 +49,7 @@ include 'interrupt.s'
 include 'command.s'
 include 'terminal.s'
 
-align 16
+align 4
 
 ; =========================================================
 ;

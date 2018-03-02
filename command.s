@@ -161,7 +161,12 @@ cmd_joy_select: db "JOY_SELECT = "
 cmd_joy_y:      db "JOY_Y      = "
 cmd_joy_b:      db "JOY_B      = "
 
-align 16
+strdef  mem_dump_header, TERM_REVERSE, \
+    " Address  00 01 02 03 04 05 06 07    ASCII  ", \ 
+    TERM_NOATTR, \
+    TERM_NEWLINE
+
+align 4
 
 ; =========================================================
 ;
@@ -180,91 +185,131 @@ cmd_reg_func:
     info        "Execute 'r' command in cmd_reg_func."
     uart_strl   reg_w0, REG_LABEL_LEN
     uart_hex32  w0
-    uart_nl
+    uart_spc
+    uart_chr    '|'
+    uart_spc
     uart_strl   reg_w1, REG_LABEL_LEN
     uart_hex32  w1
-    uart_nl
+    uart_spc
+    uart_chr    '|'
+    uart_spc
     uart_strl   reg_w2, REG_LABEL_LEN
     uart_hex32  w2
     uart_nl
     uart_strl   reg_w3, REG_LABEL_LEN
     uart_hex32  w3
-    uart_nl
+    uart_spc
+    uart_chr    '|'
+    uart_spc
     uart_strl   reg_w4, REG_LABEL_LEN
     uart_hex32  w4
-    uart_nl
+    uart_spc
+    uart_chr    '|'
+    uart_spc
     uart_strl   reg_w5, REG_LABEL_LEN
     uart_hex32  w5
     uart_nl
     uart_strl   reg_w6, REG_LABEL_LEN
     uart_hex32  w6
-    uart_nl
+    uart_spc
+    uart_chr    '|'
+    uart_spc
     uart_strl   reg_w7, REG_LABEL_LEN
     uart_hex32  w7
-    uart_nl
+    uart_spc
+    uart_chr    '|'
+    uart_spc
     uart_strl   reg_w8, REG_LABEL_LEN
     uart_hex32  w8
     uart_nl
     uart_strl   reg_w9, REG_LABEL_LEN
     uart_hex32  w9
-    uart_nl
+    uart_spc
+    uart_chr    '|'
+    uart_spc
     uart_strl   reg_w10, REG_LABEL_LEN
     uart_hex32  w10
-    uart_nl
+    uart_spc
+    uart_chr    '|'
+    uart_spc
     uart_strl   reg_w11, REG_LABEL_LEN
     uart_hex32  w11
     uart_nl
     uart_strl   reg_w12, REG_LABEL_LEN
     uart_hex32  w12
-    uart_nl
+    uart_spc
+    uart_chr    '|'
+    uart_spc
     uart_strl   reg_w13, REG_LABEL_LEN
     uart_hex32  w13
-    uart_nl
+    uart_spc
+    uart_chr    '|'
+    uart_spc
     uart_strl   reg_w14, REG_LABEL_LEN
     uart_hex32  w14
     uart_nl
     uart_strl   reg_w15, REG_LABEL_LEN
     uart_hex32  w15
-    uart_nl
+    uart_spc
+    uart_chr    '|'
+    uart_spc
     uart_strl   reg_w16, REG_LABEL_LEN
     uart_hex32  w16
-    uart_nl
+    uart_spc
+    uart_chr    '|'
+    uart_spc
     uart_strl   reg_w17, REG_LABEL_LEN
     uart_hex32  w17
     uart_nl
     uart_strl   reg_w18, REG_LABEL_LEN
     uart_hex32  w18
-    uart_nl
+    uart_spc
+    uart_chr    '|'
+    uart_spc
     uart_strl   reg_w19, REG_LABEL_LEN
     uart_hex32  w19
-    uart_nl
+    uart_spc
+    uart_chr    '|'
+    uart_spc
     uart_strl   reg_w20, REG_LABEL_LEN
     uart_hex32  w20
     uart_nl
     uart_strl   reg_w21, REG_LABEL_LEN
     uart_hex32  w21
-    uart_nl
+    uart_spc
+    uart_chr    '|'
+    uart_spc
     uart_strl   reg_w22, REG_LABEL_LEN
     uart_hex32  w22
-    uart_nl
+    uart_spc
+    uart_chr    '|'
+    uart_spc
     uart_strl   reg_w23, REG_LABEL_LEN
     uart_hex32  w23
     uart_nl
     uart_strl   reg_w24, REG_LABEL_LEN
     uart_hex32  w24
-    uart_nl
+    uart_spc
+    uart_chr    '|'
+    uart_spc
     uart_strl   reg_w25, REG_LABEL_LEN
     uart_hex32  w25
-    uart_nl
+    uart_spc
+    uart_chr    '|'
+    uart_spc
     uart_strl   reg_w26, REG_LABEL_LEN
     uart_hex32  w26
     uart_nl
     uart_strl   reg_w27, REG_LABEL_LEN
     uart_hex32  w27
-    uart_nl
+    uart_spc
+    uart_chr    '|'
+    uart_spc
     uart_strl   reg_w28, REG_LABEL_LEN
     uart_hex32  w28
-    uart_nl
+    uart_spc
+    uart_chr    '|'
+    uart_spc
     uart_strl   reg_w29, REG_LABEL_LEN
     uart_hex32  w29
     uart_nl
@@ -306,38 +351,56 @@ cmd_help_func:
 ;
 ; =========================================================
 cmd_dump_mem_func:
-    sub         sp, sp, #48
+    sub         sp, sp, #64
     stp         x0, x30, [sp]
     stp         x1, x2, [sp, #16]
     stp         x3, x4, [sp, #32]
+    stp         x5, x6, [sp, #48]
     info        "Execute 'm' command in cmd_dump_mem_func."
     adr         x2, params
     ldr         w0, [x2, 0]             ; address
     ldr         w1, [x2, 4]             ; size
-    debug_reg   w0, reg_w0, "address: "
-    debug_reg   w1, reg_w1, "   size: "
-    cbnz        w1, .line
+    cbnz        w1, .begin
     mov         w1, 128
-
-.line:    
+.begin:
+    uart_str    mem_dump_header
+    mov         w5, 8
+    cmp         w1, 8
+    b.hs        .line
+    mov         w5, w1
+.line: 
     mov         w2, 8
-.remainder:    
+    mov         w4, w5
     str_hex32   w0, number_buffer + 1
     uart_strl   number_buffer + 1, 8
     uart_chr    ':'
     uart_spc
 .byte:
+    cbnz        w4, .read_byte
+    uart_spc
+    uart_spc
+    uart_spc
+    b           .next_byte
+.read_byte:
+    sub         w4, w4, 1
     ldrb        w3, [x0], 1
     str_hex8    w3, number_buffer + 1
     uart_strl   number_buffer + 1, 2
     uart_spc
+.next_byte:    
     subs        w2, w2, 1
     b.ne        .byte
     uart_spc
     uart_spc
     mov         w2, 8
+    mov         w4, w5
     sub         w0, w0, w2
 .ascii:
+    cbnz        w4, .read_ascii
+    uart_spc
+    b           .next
+.read_ascii:    
+    sub         w4, w4, 1
     ldrb        w3, [x0], 1
     str_isprt   w3
     cbz         w21, .ctrl
@@ -345,7 +408,7 @@ cmd_dump_mem_func:
     b           .next
 .ctrl:
     uart_chr    '.'
-.next:    
+.next:
     subs        w2, w2, 1
     b.ne        .ascii
     uart_nl
@@ -353,9 +416,11 @@ cmd_dump_mem_func:
     b.eq        .done
     cmp         w1, 8
     b.hs        .full_line
-    mov         w2, w1
+    cmp         w5, 8
+    b.lo        .done
+    mov         w5, w1
     mov         w1, 0
-    b           .remainder
+    b           .line
 .full_line:
     subs        w1, w1, 8
     b.ne        .line
@@ -363,7 +428,8 @@ cmd_dump_mem_func:
     ldp         x0, x30, [sp]
     ldp         x1, x2, [sp, #16]
     ldp         x3, x4, [sp, #32]
-    add         sp, sp, #48
+    ldp         x5, x6, [sp, #48]
+    add         sp, sp, #64
     ret
 
 ; =========================================================
@@ -539,7 +605,7 @@ cmd_joy1_func:
 cmd_clear_func:
     sub         sp, sp, #16
     stp         x0, x30, [sp]
-    info        "Execute command 'clear' in cmd_clear_func."
+    info        "Execute 'clear' command in cmd_clear_func."
     uart_str    clr_screen
     ldp         x0, x30, [sp]
     add         sp, sp, #16
@@ -559,7 +625,6 @@ cmd_clear_func:
 cmd_reset_func:
     sub         sp, sp, #16
     stp         x0, x30, [sp]
-    info        "Execute command 'reset' in cmd_reset_func."
     bl          term_welcome
     ldp         x0, x30, [sp]
     add         sp, sp, #16
@@ -602,12 +667,10 @@ command_find:
     cbnz        w1, .found
     ldr         w4, [x2, CMD_DEF_PARAM_COUNT]
     mul         w4, w4, w5
-    info_reg    w4, reg_w4, "params size in bytes: "
     add         w2, w2, 256
     add         w2, w2, w4       
     b           .loop
 .found:
-    debug       "found command match"
     mov         w1, w2
     ldr         w6, [x2, CMD_DEF_PARAM_COUNT]
     cbz         w6, .done
@@ -624,16 +687,21 @@ command_find:
     add         w3, w3, w0
 .param:
     cbz         w0, .done
+    ldrb        w8, [x2, PARAM_DEF_TYPE]
+    ldrb        w9, [x2, PARAM_DEF_REQUIRED]
     mov         w13, w0
     ldrb        w0, [x4], 1
     add         w0, w0, 1
     sub         w11, w0, w13
     sub         w11, w11, 1
-    debug_reg   w0, reg_w0, "new offset: "
-    debug_reg   w11, reg_w11, "new length: "
-    ldrb        w8, [x2, PARAM_DEF_TYPE]
-    ldrb        w9, [x2, PARAM_DEF_REQUIRED]
-
+    cmp         w11, 0
+    b.gt        .ok
+    cbnz        w9, .error
+.can_omit:
+    cmp         w6, 1
+    b.ne        .error
+    b           .done
+.ok:    
     mov         w12, 10
     cmp         w8, PARAM_TYPE_REGISTER
     b.ne        .number_type
@@ -646,7 +714,6 @@ command_find:
 .number_type:
     cmp         w8, PARAM_TYPE_NUMBER
     b.ne        .error
-    debug       "begin number_type parsing"
     ldrb        w10, [x3]
     cmp         w10, '%'
     b.ne        .hex
@@ -657,9 +724,6 @@ command_find:
 .hex:    
     cmp         w10, '$'
     b.ne        .octal
-
-    debug       "in hex parse case"
-
     mov         w12, 16
     add         w3, w3, 1
     sub         w11, w11, 1 
@@ -672,11 +736,7 @@ command_find:
     sub         w11, w11, 1
     b           .num
 .num:
-    ;debug_reg   w3,  reg_w3,  "address of command_buffer: "
-    ;debug_reg   w11, reg_w11, "length of parameter string: "
-    ;debug_reg   w12, reg_w12, "base for number conversion: "
     str_nbr     w3, w11, w12
-    ;debug_reg   w20, reg_w20, "result number: "
     str         w20, [x7], 4
 .next:
     add         w3, w3, w11
@@ -690,7 +750,6 @@ command_find:
 .notfound:
     mov         w1, 0
 .done:
-    debug_reg   w1, reg_w1, "address of command def: "
     ldp         x0, x30, [sp]
     ldp         x2, x3, [sp, #16]
     ldp         x4, x5, [sp, #32]

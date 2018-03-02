@@ -122,7 +122,15 @@ string_number:
 .loop:
     mul         w7, w7, w3          ; multiply acc by base
     ldrb        w5, [x1]
-.parse:    
+.parse:
+    cmp         w5, 'a'
+    b.lo        .ok
+    cmp         w5, 'z'
+    b.hi        .ok
+    bic         w5, w5, 00100000b
+    nop                             ; i'm sure why this is required but without it
+                                    ; the following subs hangs the cpu
+.ok:    
     subs        w5, w5, '0'         ; < '0'
     b.lo        .done
     cmp         w5, $10             

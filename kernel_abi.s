@@ -24,7 +24,7 @@
 ;
 ; =========================================================
 
-KERNEL_ABI_BOTTOM = $10000
+KERNEL_ABI_BOTTOM = $20000
 KERNEL_ABI_SIZE   = $1000
 KERNEL_ABI_TOP    = KERNEL_ABI_BOTTOM + KERNEL_ABI_SIZE
 GAME_BOTTOM       = KERNEL_ABI_TOP
