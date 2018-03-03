@@ -142,7 +142,7 @@ commands:
         "Dump the value of the specified register.", \
         cmd_reg_func, \
         1
-    parmdef cmd_dump_reg_param, "register", PARAM_TYPE_REGISTER, FALSE
+    parmdef cmd_dump_param, "reg", PARAM_TYPE_REGISTER, FALSE
 
     cmddef cmd_fps, "fps", \
         "Show the computed frames per second rate.", \
@@ -152,7 +152,8 @@ commands:
     cmddef cmd_load, "load", \
         "Load a game image over the serial terminal.", \
         cmd_load_func, \
-        0
+        1
+    parmdef cmd_load_size, "size", PARAM_TYPE_NUMBER, TRUE
 
     cmddef cmd_unload, "unload", \
         "Unload the currently loaded game image.", \
@@ -204,6 +205,7 @@ strdef  info_init,  "game_init_vector: "
 strdef  info_tick,  "game_tick_vector: "
 strdef  info_state, "    game_enabled: "
 
+strdef  load_msg, "game image loaded.", TERM_NEWLINE
 strdef  unloaded_msg, "game image unloaded.", TERM_NEWLINE
 
 strdef  info_nothing_loaded, "no game image is loaded.", TERM_NEWLINE
@@ -227,10 +229,21 @@ align 4
 ;
 ; =========================================================
 cmd_load_func:
-    sub         sp, sp, #16
+    sub         sp, sp, #32
     stp         x0, x30, [sp]
+    stp         x1, x2, [sp, #16]
+    debug       "cmd_load_func start."
+    adr         x0, params
+    ldr         w1, [x0, 0]
+    debug_reg   w1, reg_w1, "    size: "
+    adr         x0, game_top
+    debug_reg   w0, reg_w0, "game top: "
+    term_upload w0, w1
+    uart_str    load_msg
+    debug       "cmd_load_func stop."
     ldp         x0, x30, [sp]
-    add         sp, sp, #16
+    ldp         x1, x2, [sp, #16]
+    add         sp, sp, #32
     ret
 
 ; =========================================================

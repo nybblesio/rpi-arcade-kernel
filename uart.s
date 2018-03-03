@@ -156,19 +156,20 @@ uart_recv:
 ;
 ; =========================================================
 uart_recv_block:
-    sub         sp, sp, #16
+    sub         sp, sp, #32
     stp         x0, x30, [sp]
+    stp         x2, x3, [sp, #16]
     pload       x0, w0, aux_base
 .empty: 
     ldr         w2, [x0, AUX_MU_LSR_REG]
     ands        w2, w2, $01
-    b.ne        .ready
-    b           .empty
+    b.eq        .empty
 .ready: 
     ldr         w1, [x0, AUX_MU_IO_REG]
     and         w1, w1, $ff
     ldp         x0, x30, [sp]
-    add         sp, sp, #16
+    ldp         x2, x3, [sp, #16]
+    add         sp, sp, #32
     ret
 
 ; =========================================================

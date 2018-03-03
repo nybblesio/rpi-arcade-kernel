@@ -46,8 +46,8 @@ include 'console.s'
 include 'string.s'
 include 'joy.s'
 include 'interrupt.s'
-include 'command.s'
 include 'terminal.s'
+include 'command.s'
 
 align 4
 

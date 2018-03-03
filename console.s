@@ -110,7 +110,7 @@ macro info_reg reg, name, [params] {
 }
 
 macro debug_reg reg, name, [params] {
-    log_reg     info_level, $04, reg, name, params
+    log_reg     debug_level, $04, reg, name, params
 }
 
 macro log_label level, color, label, [params] {

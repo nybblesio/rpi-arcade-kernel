@@ -26,6 +26,19 @@
 
 ; =========================================================
 ;
+; Macros Section
+;
+; =========================================================
+macro term_upload address, size {
+   sub          sp, sp, #16
+   mov          w25, address
+   mov          w26, size
+   stp          x25, x26, [sp]
+   bl           term_binary_read
+}
+
+; =========================================================
+;
 ; Data Section
 ;
 ; =========================================================
@@ -116,6 +129,39 @@ term_prompt:
    uart_spc
    ldp      x0, x30, [sp]
    add      sp, sp, #16
+   ret
+
+; =========================================================
+;
+; term_binary_read
+;
+; stack:
+;   target address
+;   size
+;
+; registers:
+;   (none)
+;
+; =========================================================
+term_binary_read:
+   sub          sp, sp, #48
+   stp          x0, x30, [sp]
+   stp          x1, x2, [sp, #16]
+   stp          x3, x4, [sp, #32]
+   ldp          x0, x2, [sp, #48]
+   debug        "term_binary_read start."
+.loop:   
+   bl           uart_recv_block
+   debug_reg    w1, reg_w1, "uart byte: "
+   strb         w1, [x0], 1
+   subs         w2, w2, 1
+   b.ne         .loop
+.done:
+   debug        "term_binary_read stop."
+   ldp          x0, x30, [sp]
+   ldp          x1, x2, [sp, #16]
+   ldp          x3, x4, [sp, #32]
+   add          sp, sp, #64
    ret
 
 ; =========================================================
