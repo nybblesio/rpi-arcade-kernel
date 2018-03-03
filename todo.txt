@@ -14,6 +14,13 @@ Questions & Ponderings
     ; Set fake_vsync_isr=1 in config.txt and I will trigger the SMI interrupt (48) from my vsync callback.
     ; In your ISR, you should write 0 to SMICS (0x7E600000/0x20600000) to clear it.
 
+IMPORTANT NOTES
+---------------
+
+- I set force_turbo=1 in config.txt so the core clock runs at 400Mhz
+- The ARM_TIMER_CTL is currently configured assuming 250Mhz clock, so the counts are now double what they were
+- Monitor the CPU thermal levels because now it's running at full bore
+
 Tasks
 -----
 

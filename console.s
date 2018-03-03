@@ -201,6 +201,7 @@ strdef con_license1_str,  "This software is "
 strdef con_license2_str,  "licensed"
 strdef con_license3_str,  " under the MIT license."
 
+; xxx: this should be doubled to 500000 to get a 250ms delay
 timerdef timer_caret_blink, 1, 250000, caret_blink_callback
 
 align 16

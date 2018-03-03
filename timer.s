@@ -63,9 +63,11 @@ macro timerdef lbl, id, duration, callback {
 ;
 ; Data Section
 ;
-; =========================================================a
+; =========================================================
 align 4
 
+; these settings assume a 250MHz core clock
+; if the core clock is running at 400Mhz then it's 2000 cycles per millisecond
 timer_settings1 dw  $00f90000
 timer_settings2 dw  $00f90200
 

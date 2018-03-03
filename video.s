@@ -113,6 +113,7 @@ page_bytes: dw  SCREEN_WIDTH * SCREEN_HEIGHT
 fps:        dw  0
 fps_count:  dw  0
 
+; xxx: this should be doubled to get a 1 second delay
 timerdef    timer_fps, 2, 1000000, video_fps_callback
 
 align 4

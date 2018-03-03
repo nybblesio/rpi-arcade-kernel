@@ -355,7 +355,9 @@ uart_init:
     str         w1, [x0, AUX_MU_IER_REG]
     mov         w1, $C6
     str         w1, [x0, AUX_MU_IIR_REG]
-    mov         w1, 270
+    ;mov         w1, 270
+    ; baud rate calculation: ((400000000/115200)/8) - 1
+    mov         w1, 433
     str         w1, [x0, AUX_MU_BAUD_REG]
     pload       x0, w0, gpio_base
     ldr         w1, [x0, GPIO_GPFSEL1]
