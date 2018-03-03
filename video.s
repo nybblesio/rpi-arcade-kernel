@@ -110,8 +110,39 @@ set_virtual_offset_commands_end:
 align 4
 page:       dw  1
 page_bytes: dw  SCREEN_WIDTH * SCREEN_HEIGHT
+fps:        dw  0
+fps_count:  dw  0
 
-align 16
+timerdef    timer_fps, 2, 1000000, video_fps_callback
+
+align 4
+
+; =========================================================
+;
+; video_fps_callback
+;
+; stack:
+;   (none)
+;
+; registers:
+;   (none)
+;
+; =========================================================
+video_fps_callback:
+    sub         sp, sp, #32
+    stp         x0, x30, [sp]
+    stp         x1, x2, [sp, #16]
+    pload       x0, w0, fps_count
+    pstore      x1, w0, fps
+    mov         w0, 0
+    pstore      x1, w0, fps_count
+    mov         w1, F_TIMER_ENABLED
+    adr         x0, timer_fps
+    str         w1, [x0, TIMER_STATUS]
+    ldp         x0, x30, [sp]
+    ldp         x1, x2, [sp, #16]
+    add         sp, sp, #32
+    ret
 
 ; =========================================================
 ;
@@ -133,6 +164,8 @@ video_init:
     b2p         w0
     adr         x1, frame_buffer.data1
     str         w0, [x1]
+    adr         x1, timer_fps
+    bl          timer_start
     ldp         x0, x30, [sp]
     add         sp, sp, #16
     ret
@@ -169,6 +202,9 @@ page_swap:
     pstore      x2, w1, virtual_offset.indicator
     adr         x0, set_virtual_offset_commands
     bl          write_mailbox
+    pload       x0, w0, fps_count
+    add         w0, w0, 1
+    pstore      x1, w0, fps_count
     ldp         x0, x30, [sp]
     add         sp, sp, #16
     ret

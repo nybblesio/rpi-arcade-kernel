@@ -17,6 +17,10 @@ Questions & Ponderings
 Tasks
 -----
 
+- PERF: frame rate drops as the number of rendered lines increased on the console.
+        NOTE 1: inlining of draw_string didn't seem to help much
+        NOTE 2: use DMA?
+
 - str_isprt: not using the stack, stomping w20
 
 - command_find: add errors to a small buffer for output in terminal
@@ -25,18 +29,16 @@ Tasks
 
 - params array should be an array of small structures that has type and word value combined
 
-- command: fps
+- command: load
 
-- command: install
+- command: unload
 
 - command: info
-    - return game title, autor, verison, revision information
+    - return game title, author, verison, revision information
 
 - command: run
 
 - command: stop
-
-- command: init
 
 KERNEL
 ------
@@ -114,3 +116,5 @@ DONE
 - FIX: cmd_dump_mem_func is dumping extra ASCII on remainder
        fix ASCII offset for remainer lines
 - FIX: string_number converts lowercase a-z to uppercase
+- command: fps
+

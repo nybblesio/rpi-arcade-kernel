@@ -144,6 +144,36 @@ commands:
         1
     parmdef cmd_dump_reg_param, "register", PARAM_TYPE_REGISTER, FALSE
 
+    cmddef cmd_fps, "fps", \
+        "Show the computed frames per second rate.", \
+        cmd_fps_func, \
+        0
+
+    cmddef cmd_load, "load", \
+        "Load a game image over the serial terminal.", \
+        cmd_load_func, \
+        0
+
+    cmddef cmd_unload, "unload", \
+        "Unload the currently loaded game image.", \
+        cmd_unload_func, \
+        0
+
+    cmddef cmd_run, "run", \
+        "Run the loaded game image.", \
+        cmd_run_func, \
+        0
+
+    cmddef cmd_stop, "stop", \
+        "Stop the running game image.", \
+        cmd_stop_func, \
+        0
+
+    cmddef cmd_info, "info", \
+        "Show details about the loaded game image.", \
+        cmd_info_func, \
+        0
+
     ; end sentinel
     dw          0
 
@@ -161,12 +191,193 @@ cmd_joy_select: db "JOY_SELECT = "
 cmd_joy_y:      db "JOY_Y      = "
 cmd_joy_b:      db "JOY_B      = "
 
+strdef  fps_label, "fps = "
+
+strdef  start_msg, "game started.", TERM_NEWLINE
+strdef  stop_msg,  "game stopped.", TERM_NEWLINE
+
+strdef  info_title, "           Title: "
+strdef  info_author,"          Author: "
+strdef  info_ver,   "         Version: "
+strdef  info_rev,   "             Rev: "
+strdef  info_init,  "game_init_vector: "
+strdef  info_tick,  "game_tick_vector: "
+strdef  info_state, "    game_enabled: "
+
+strdef  unloaded_msg, "game image unloaded.", TERM_NEWLINE
+
+strdef  info_nothing_loaded, "no game image is loaded.", TERM_NEWLINE
+
 strdef  mem_dump_header, TERM_REVERSE, \
     " Address  00 01 02 03 04 05 06 07    ASCII  ", \ 
     TERM_NOATTR, \
     TERM_NEWLINE
 
 align 4
+
+; =========================================================
+;
+; cmd_load_func
+;
+; stack:
+;   (none)
+;   
+; registers:
+;   (none)
+;
+; =========================================================
+cmd_load_func:
+    sub         sp, sp, #16
+    stp         x0, x30, [sp]
+    ldp         x0, x30, [sp]
+    add         sp, sp, #16
+    ret
+
+; =========================================================
+;
+; cmd_unload_func
+;
+; stack:
+;   (none)
+;   
+; registers:
+;   (none)
+;
+; =========================================================
+cmd_unload_func:
+    sub         sp, sp, #32
+    stp         x0, x30, [sp]
+    stp         x1, x2, [sp, #16]
+    mov         w1, 0
+    pstore      x0, w1, game_init_vector
+    pstore      x0, w1, game_tick_vector
+    uart_str    unloaded_msg
+    ldp         x0, x30, [sp]
+    stp         x1, x2, [sp, #16]
+    add         sp, sp, #32
+    ret
+
+; =========================================================
+;
+; cmd_run_func
+;
+; stack:
+;   (none)
+;   
+; registers:
+;   (none)
+;
+; =========================================================
+cmd_run_func:
+    sub         sp, sp, #32
+    stp         x0, x30, [sp]
+    stp         x1, x2, [sp, #16]
+    mov         w1, 1
+    pstoreb     x0, w1, game_enabled
+    uart_str    start_msg
+    ldp         x0, x30, [sp]
+    ldp         x1, x2, [sp, #16]
+    add         sp, sp, #32
+    ret
+
+
+; =========================================================
+;
+; cmd_stop_func
+;
+; stack:
+;   (none)
+;   
+; registers:
+;   (none)
+;
+; =========================================================
+cmd_stop_func:
+    sub         sp, sp, #32
+    stp         x0, x30, [sp]
+    stp         x1, x2, [sp, #16]
+    mov         w1, 0
+    pstoreb     x0, w1, game_enabled
+    uart_str    stop_msg
+    ldp         x0, x30, [sp]
+    ldp         x1, x2, [sp, #16]
+    add         sp, sp, #32
+    ret
+
+; =========================================================
+;
+; cmd_info_func
+;
+; stack:
+;   (none)
+;   
+; registers:
+;   (none)
+;
+; =========================================================
+cmd_info_func:
+    sub         sp, sp, #48
+    stp         x0, x30, [sp]
+    stp         x1, x2, [sp, #16]
+    stp         x3, x4, [sp, #32]
+    pload       x0, w0, game_init_vector
+    cbz         w0, .nothing
+    pload       x1, w1, game_tick_vector
+    uart_str    info_title
+    uart_strl   title, 64
+    uart_nl
+    uart_str    info_author
+    uart_strl   author, 64
+    uart_nl
+    uart_str    info_ver
+    ploadb      x2, w2, version 
+    uart_hex8   w2
+    uart_nl
+    uart_str    info_rev
+    ploadb      x2, w2, revision
+    uart_hex8   w2
+    uart_nl
+    uart_str    info_init
+    uart_hex32  w0
+    uart_nl
+    uart_str    info_tick
+    uart_hex32  w1
+    uart_nl
+    ploadb      x2, w2, game_enabled
+    uart_str    info_state
+    uart_hex8   w2
+    uart_nl
+    b           .done
+.nothing:
+    uart_str    info_nothing_loaded
+.done:    
+    ldp         x0, x30, [sp]
+    ldp         x1, x2, [sp, #16]
+    ldp         x3, x4, [sp, #32]
+    add         sp, sp, #48
+    ret
+
+; =========================================================
+;
+; cmd_fps_func
+;
+; stack:
+;   (none)
+;   
+; registers:
+;   (none)
+;
+; =========================================================
+cmd_fps_func:
+    sub         sp, sp, #16
+    stp         x0, x30, [sp]
+    uart_str    fps_label
+    pload       x0, w0, fps
+    uart_hex8   w0
+    uart_nl
+    ldp         x0, x30, [sp]
+    add         sp, sp, #16
+    ret
 
 ; =========================================================
 ;

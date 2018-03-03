@@ -42,6 +42,7 @@ game_init_vector: dw  game_init
 game_tick_vector: dw  game_tick 
 
 title:            db "Lumberjacks                                                      "
+author:           db "Jeff Panici                                                      "
 version:          db 1
 revision:         db 0
 

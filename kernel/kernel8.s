@@ -168,6 +168,8 @@ core_three:
 ; Kernel/Game Interface Section
 ;
 ; =========================================================
+game_enabled:   db 0
+
 org KERNEL_ABI_BOTTOM
 
 include 'kernel_abi.s'
@@ -206,12 +208,13 @@ org KERNEL_ABI_TOP
 
 game_top:
 
-game_init_vector: dw    ?
-game_tick_vector: dw    ? 
+game_init_vector: dw    0
+game_tick_vector: dw    0 
 
 title:            db    64 dup(?)
-version:          db    ?
-revision:         db    ?
+author:           db    64 dup(?)
+version:          db    0
+revision:         db    0
 
 ; =========================================================
 ;
