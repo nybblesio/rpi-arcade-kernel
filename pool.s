@@ -45,10 +45,5 @@ arm_timer_controller:
 arm_timer_counter:
     dw  PERIPHERAL_BASE + ARM_TIMER_CNT
 
-; 1Mhz = 1000 cycles per millisecond
-; e.g. 250ms = 250 * 1000 = 250000
-frame_timeout:
-    dw  250000
-
 gpio_sel1_uart_mask1:
     dw  $fffd2fff

@@ -113,8 +113,7 @@ page_bytes: dw  SCREEN_WIDTH * SCREEN_HEIGHT
 fps:        dw  0
 fps_count:  dw  0
 
-; xxx: this should be doubled to get a 1 second delay
-timerdef    timer_fps, 2, 1000000, video_fps_callback
+timerdef    timer_fps, 2, 1000, video_fps_callback
 
 align 4
 
@@ -189,7 +188,7 @@ page_swap:
     cbz         w1, .page_1
     mov         w1, 0
     pstore      x2, w1, page
-    mov         w1, 480
+    mov         w1, SCREEN_HEIGHT
     pstore      x2, w1, virtual_offset.data2
     b           .set_offset
 .page_1:

@@ -41,46 +41,49 @@ SPRITE_BYTES            = SPRITE_WIDTH * SPRITE_HEIGHT
 
 PALETTE_SIZE            = 16
 
-ESC_CHAR        = $1b
-BACKSPACE_CHAR  = $08
-RETURN_CHAR     = $0d
-LINEFEED_CHAR   = $0a
-LEFT_BRACKET    = $5b
+CHAR_ESC        = $1b
+CHAR_BACKSPACE  = $08
+CHAR_RETURN     = $0d
+CHAR_LINEFEED   = $0a
+CHAR_LBRACKET   = $5b
 CHAR_A          = $41
 CHAR_B          = $42
 CHAR_C          = $43
 CHAR_D          = $44
 CHAR_SPACE      = $20
 
+XON             = 17
+XOFF            = 19
+
 TERM_CHARS_PER_LINE = 76
 PARSE_BUFFER_LENGTH = 32
 
-TERM_CLS        equ ESC_CHAR, "[2J"
-TERM_CURPOS11   equ ESC_CHAR, "[1;1H"
-TERM_REVERSE    equ ESC_CHAR, "[7m"
-TERM_NOATTR     equ ESC_CHAR, "[m"
-TERM_UNDERLINE  equ ESC_CHAR, "[4m"
-TERM_BLINK      equ ESC_CHAR, "[5m"
-TERM_BOLD       equ ESC_CHAR, "[1m"
-TERM_DELCHAR    equ ESC_CHAR, "[1P"
+TERM_CLS        equ CHAR_ESC, "[2J"
+TERM_CURPOS11   equ CHAR_ESC, "[1;1H"
+TERM_REVERSE    equ CHAR_ESC, "[7m"
+TERM_NOATTR     equ CHAR_ESC, "[m"
+TERM_UNDERLINE  equ CHAR_ESC, "[4m"
+TERM_BLINK      equ CHAR_ESC, "[5m"
+TERM_BOLD       equ CHAR_ESC, "[1m"
+TERM_DELCHAR    equ CHAR_ESC, "[1P"
 TERM_NEWLINE    equ $0d, $0a
 TERM_NEWLINE2   equ $0d, $0a, $0d, $0a
-TERM_BLACK      equ ESC_CHAR, "[30m"
-TERM_RED        equ ESC_CHAR, "[31m"
-TERM_GREEN      equ ESC_CHAR, "[32m"
-TERM_YELLOW     equ ESC_CHAR, "[33m"
-TERM_BLUE       equ ESC_CHAR, "[34m"
-TERM_MAGENTA    equ ESC_CHAR, "[35m"
-TERM_CYAN       equ ESC_CHAR, "[36m"
-TERM_WHITE      equ ESC_CHAR, "[37m"
-TERM_BG_BLACK   equ ESC_CHAR, "[40m"
-TERM_BG_RED     equ ESC_CHAR, "[41m"
-TERM_BG_GREEN   equ ESC_CHAR, "[42m"
-TERM_BG_YELLOW  equ ESC_CHAR, "[43m"
-TERM_BG_BLUE    equ ESC_CHAR, "[44m"
-TERM_BG_MAGENTA equ ESC_CHAR, "[45m"
-TERM_BG_CYAN    equ ESC_CHAR, "[46m"
-TERM_BG_WHITE   equ ESC_CHAR, "[47m"
+TERM_BLACK      equ CHAR_ESC, "[30m"
+TERM_RED        equ CHAR_ESC, "[31m"
+TERM_GREEN      equ CHAR_ESC, "[32m"
+TERM_YELLOW     equ CHAR_ESC, "[33m"
+TERM_BLUE       equ CHAR_ESC, "[34m"
+TERM_MAGENTA    equ CHAR_ESC, "[35m"
+TERM_CYAN       equ CHAR_ESC, "[36m"
+TERM_WHITE      equ CHAR_ESC, "[37m"
+TERM_BG_BLACK   equ CHAR_ESC, "[40m"
+TERM_BG_RED     equ CHAR_ESC, "[41m"
+TERM_BG_GREEN   equ CHAR_ESC, "[42m"
+TERM_BG_YELLOW  equ CHAR_ESC, "[43m"
+TERM_BG_BLUE    equ CHAR_ESC, "[44m"
+TERM_BG_MAGENTA equ CHAR_ESC, "[45m"
+TERM_BG_CYAN    equ CHAR_ESC, "[46m"
+TERM_BG_WHITE   equ CHAR_ESC, "[47m"
 
 ; =========================================================
 ;

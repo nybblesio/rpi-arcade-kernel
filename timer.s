@@ -49,12 +49,15 @@ macro delay duration {
     bl          timer_wait
 }
 
+; 1Mhz = 1000 cycles per millisecond
+; e.g. 250ms = 250 * 1000 = 250000
 macro timerdef lbl, id, duration, callback {
     align 4
     label lbl
     dw  id
     dw  F_TIMER_ENABLED
-    dw  duration
+    dw  duration * 1600 ; 250MHz/250MHz = 1MHz = 1000 cycles per millisecond
+                        ; @ 400MHz
     dw  0               ; next timeout
     dw  callback
 }

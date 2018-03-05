@@ -121,12 +121,15 @@ term_welcome:
 term_prompt:
    sub      sp, sp, #16
    stp      x0, x30, [sp]
-   fill     command_buffer, TERM_CHARS_PER_LINE, CHAR_SPACE
-   fill     token_offsets, TOKEN_OFFSET_COUNT, 0
+   adr      x0, command_buffer
+   fill     w0, TERM_CHARS_PER_LINE, CHAR_SPACE
+   adr      x0, token_offsets
+   fill     w0, TOKEN_OFFSET_COUNT, 0
    mov      w1, 0 
    pstore   x0, w1, command_buffer_offset
    uart_chr '>'
    uart_spc
+   uart_chr XON
    ldp      x0, x30, [sp]
    add      sp, sp, #16
    ret
@@ -149,15 +152,25 @@ term_binary_read:
    stp          x1, x2, [sp, #16]
    stp          x3, x4, [sp, #32]
    ldp          x0, x2, [sp, #48]
-   debug        "term_binary_read start."
+   mov          w3, 4
 .loop:   
    bl           uart_recv_block
-   debug_reg    w1, reg_w1, "uart byte: "
    strb         w1, [x0], 1
+   subs         w3, w3, 1
+   b.eq         .xoff 
    subs         w2, w2, 1
    b.ne         .loop
+   b            .done
+.xoff:
+   uart_chr     XOFF
+.wait:
+   bl           uart_status
+   ands         w1, w1, $01
+   b.eq         .wait
+   mov          w3, 4
+   uart_chr     XON
+   b            .loop
 .done:
-   debug        "term_binary_read stop."
    ldp          x0, x30, [sp]
    ldp          x1, x2, [sp, #16]
    ldp          x3, x4, [sp, #32]
@@ -182,13 +195,13 @@ term_update:
    bl       uart_recv
    cbz      w1, .exit
 
-   cmp      w1, ESC_CHAR
+   cmp      w1, CHAR_ESC
    b.eq     .esc
-   cmp      w1, RETURN_CHAR
+   cmp      w1, CHAR_RETURN
    b.eq     .echo
-   cmp      w1, LINEFEED_CHAR
+   cmp      w1, CHAR_LINEFEED
    b.eq     .return
-   cmp      w1, BACKSPACE_CHAR
+   cmp      w1, CHAR_BACKSPACE
    b.eq     .back
 
    pload    x3, w3, command_buffer_offset
@@ -204,16 +217,12 @@ term_update:
    b        .exit
 
 .return:
-   uart_chr LINEFEED_CHAR
+   uart_chr CHAR_LINEFEED
    adr      x2, command_buffer
    adr      x3, token_offsets
    mov      w4, 0
    pload    x5, w5, command_buffer_offset
    mov      w6, TOKEN_OFFSET_COUNT
-
-;
-; m $C000 $FF
-;  ^     ^  ^
 
 .char:  
    cmp      w4, w5
@@ -254,13 +263,13 @@ term_update:
    cbz      w3, .exit
    sub      w3, w3, 1
    pstore   x2, w3, command_buffer_offset
-   uart_chr BACKSPACE_CHAR
+   uart_chr CHAR_BACKSPACE
    uart_str delete_char
    b        .exit
 
 .esc:   
    bl       uart_recv_block
-   cmp      w1, LEFT_BRACKET
+   cmp      w1, CHAR_LBRACKET
    b.ne     .exit
    bl       uart_recv_block
    cmp      w1, CHAR_A

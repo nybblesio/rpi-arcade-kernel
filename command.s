@@ -90,7 +90,7 @@ label lbl # _end
 ; =========================================================
 align 4
 command_buffer:
-        db TERM_CHARS_PER_LINE dup (CHAR_SPACE)
+    db TERM_CHARS_PER_LINE dup (CHAR_SPACE)
 
 align 4        
 command_buffer_offset:  dw  0
