@@ -100,7 +100,7 @@ token_offsets:
     db  TOKEN_OFFSET_COUNT dup(0)
 
 PARAMS_COUNT = 8
-align 4
+align 8
 params:
     dw  PARAMS_COUNT dup(0)
 
@@ -142,7 +142,7 @@ commands:
         "Dump the value of the specified register.", \
         cmd_reg_func, \
         1
-    parmdef cmd_dump_param, "reg", PARAM_TYPE_REGISTER, FALSE
+    parmdef cmd_dump_reg_name, "reg", PARAM_TYPE_REGISTER, FALSE
 
     cmddef cmd_fps, "fps", \
         "Show the computed frames per second rate.", \
@@ -1006,7 +1006,7 @@ command_find:
     b.ne        .param
     b           .done
 .error:
-    debug       "param parse error"
+    uart_log    "XXX: need to finish .error dude!"
 .notfound:
     mov         w1, 0
 .done:

@@ -129,7 +129,6 @@ term_prompt:
    pstore   x0, w1, command_buffer_offset
    uart_chr '>'
    uart_spc
-   uart_chr XON
    ldp      x0, x30, [sp]
    add      sp, sp, #16
    ret
@@ -152,25 +151,11 @@ term_binary_read:
    stp          x1, x2, [sp, #16]
    stp          x3, x4, [sp, #32]
    ldp          x0, x2, [sp, #48]
-   mov          w3, 4
 .loop:   
    bl           uart_recv_block
    strb         w1, [x0], 1
-   subs         w3, w3, 1
-   b.eq         .xoff 
    subs         w2, w2, 1
    b.ne         .loop
-   b            .done
-.xoff:
-   uart_chr     XOFF
-.wait:
-   bl           uart_status
-   ands         w1, w1, $01
-   b.eq         .wait
-   mov          w3, 4
-   uart_chr     XON
-   b            .loop
-.done:
    ldp          x0, x30, [sp]
    ldp          x1, x2, [sp, #16]
    ldp          x3, x4, [sp, #32]

@@ -43,52 +43,64 @@ macro uart_nl {
 macro uart_hex8 value {
     uart_chr    '$'
     sub         sp, sp, #16
-    mov         w20, value
-    mov         w21, 8
-    stp         x20, x21, [sp]
+    mov         w25, value
+    mov         w26, 8
+    stp         x25, x26, [sp]
     bl          uart_send_hex
 }
 
 macro uart_hex16 value {
     uart_chr    '$'
     sub         sp, sp, #16
-    mov         w20, value
-    mov         w21, 16
-    stp         x20, x21, [sp]
+    mov         w25, value
+    mov         w26, 16
+    stp         x25, x26, [sp]
     bl          uart_send_hex
 }
 
 macro uart_hex32 value {
     uart_chr    '$'
     sub         sp, sp, #16
-    mov         w20, value
-    mov         w21, 32
-    stp         x20, x21, [sp]
+    mov         w25, value
+    mov         w26, 32
+    stp         x25, x26, [sp]
     bl          uart_send_hex
 }
 
 macro uart_chr char {
     sub         sp, sp, #16
-    mov         w20, char
-    mov         w21, 0
-    stp         x20, x21, [sp]
+    mov         w25, char
+    mov         w26, 0
+    stp         x25, x26, [sp]
     bl          uart_send
 }
 
 macro uart_str label* {
     sub         sp, sp, #16
-    adr         x20, label
-    ldr         w21, [x20], 4
-    stp         x20, x21, [sp]
+    adr         x25, label
+    ldr         w26, [x25], 4
+    stp         x25, x26, [sp]
     bl          uart_send_string
 }
 
 macro uart_strl label*, len* {
     sub         sp, sp, #16
-    adr         x20, label
-    mov         w21, len
-    stp         x20, x21, [sp]
+    adr         x25, label
+    mov         w26, len
+    stp         x25, x26, [sp]
     bl          uart_send_string
+}
+
+macro uart_log [params] {
+    local       .start, .end, .skip
+    b           .skip
+.start:
+    strlist     params
+.end:
+    align 4
+.skip:    
+    uart_strl   .start, .end - .start
+    uart_nl
 }
 
 ; =========================================================
