@@ -153,36 +153,44 @@ timer_start:
 ;
 ; =========================================================
 timer_update:
-    sub         sp, sp, #16
+    sub         sp, sp, #64
     stp         x0, x30, [sp]
-    adr         x10, timers
+    stp         x1, x2, [sp, #16]
+    stp         x3, x4, [sp, #32]
+    stp         x5, x6, [sp, #48]
+
+    adr         x0, timers
     mov         w1, TIMER_COUNT
 .loop:
-    ldr         w2, [x10], 4     ; ptr to timer
+    ldr         w2, [x0], 4     ; ptr to timer
     cbz         w2, .next
     ldr         w3, [x2, TIMER_STATUS]
     cmp         w3, F_TIMER_ENABLED
     b.ne        .next
-    ldr         w4, [x2, TIMER_TIMEOUT]
-    cbz         w4, .reset
+    ldr         w3, [x2, TIMER_TIMEOUT]
+    cbz         w3, .reset
     bl          timer_tick
-    cmp         w0, w4
+    cmp         w25, w3
     b.cc        .next
-    ldr         w5, [x2, TIMER_CALLBACK]
-    blr         x5
+    ldr         w3, [x2, TIMER_CALLBACK]
+    blr         x3
     ;mov         w6, F_TIMER_FIRED
     ;orr         w3, w3, w6
     ;str         w3, [x2, TIMER_STATUS]
 .reset:
     ldr         w3, [x2, TIMER_DURATION]
     bl          timer_tick
-    add         w3, w0, w3
+    add         w3, w25, w3
     str         w3, [x2, TIMER_TIMEOUT]
 .next:    
     subs        w1, w1, 1
     b.ne        .loop
+
     ldp         x0, x30, [sp]
-    add         sp, sp, #16
+    ldp         x1, x2, [sp, #16]
+    ldp         x3, x4, [sp, #32]
+    ldp         x5, x6, [sp, #48]
+    add         sp, sp, #64
     ret
 
 ; =========================================================
@@ -197,8 +205,8 @@ timer_update:
 ;
 ; =========================================================
 timer_tick:
-    pload       x0, w0, arm_timer_counter
-    ldr         w0, [x0]
+    pload       x25, w25, arm_timer_counter
+    ldr         w25, [x25]
     ret
 
 ; =========================================================

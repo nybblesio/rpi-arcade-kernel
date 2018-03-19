@@ -100,24 +100,52 @@ kernel_core:
     bl          term_prompt
     bl          console_welcome
 
+    adr         x1, render_timer
+    bl          timer_start
+
 .loop:
-    bl          joy_read
     bl          timer_update
     bl          term_update
+    b           .loop
+
+render_callback:
+    sub         sp, sp, #80
+    stp         x0, x30, [sp]
+    stp         x1, x2, [sp, #16]
+    stp         x3, x4, [sp, #32]
+    stp         x5, x6, [sp, #48]
+    stp         x10, x11, [sp, #64]
+
+    bl          joy_read
+
     page_ld
     ploadb      x1, w1, game_enabled
     cbz         w1, .no_game
     pload       x1, w1, game_tick_vector
     cbz         w1, .no_game
     blr         x1
-    b           .skip    
+    b           .skip
+
 .no_game:    
     bl          page_clear
     bl          console_draw
     bl          caret_draw
+    
 .skip:    
     bl          page_swap
-    b           .loop
+
+.exit:    
+    adr         x0, render_timer
+    mov         w1, F_TIMER_ENABLED
+    str         w1, [x0, TIMER_STATUS]
+
+    ldp         x0, x30, [sp]
+    ldp         x1, x2, [sp, #16]
+    ldp         x3, x4, [sp, #32]
+    ldp         x5, x6, [sp, #48]
+    ldp         x10, x11, [sp, #64]
+    add         sp, sp, #80
+    ret
 
 ; =========================================================
 ;
@@ -169,6 +197,13 @@ core_three:
     sub         sp, sp, CORE_STACK_SIZE * 3
 .loop:  
     b           .loop
+
+; =========================================================
+;
+; Data Section
+;
+; =========================================================
+timerdef    render_timer, 3, 16, render_callback
 
 ; =========================================================
 ;
