@@ -105,6 +105,15 @@ macro uart_log [params] {
 
 ; =========================================================
 ;
+; Variables
+;
+; =========================================================
+flow_state: db 0
+
+align 4
+
+; =========================================================
+;
 ; uart_status
 ;
 ; stack:
@@ -127,6 +136,52 @@ uart_status:
 
 ; =========================================================
 ;
+; uart_flow
+;
+; stack:
+;   (none)
+;
+; registers:
+;   (none)
+;
+; =========================================================
+uart_flow:
+    sub         sp, sp, #32
+    stp         x0, x30, [sp]
+    stp         x1, x2, [sp, #16]
+    pload       x0, w0, aux_base
+    ldr         w1, [x0, AUX_MU_STAT_REG]
+    and         w1, w1, 00000000_00000111_10000000_00000000b
+    lsr         w1, w1, 16
+    and         w1, w1, $ff
+    cbz         w1, .xon
+    ploadb      x0, w0, flow_state
+    cbnz        w0, .exit
+    cmp         w1, 2
+    b.ls        .exit
+.xoff:
+    ploadb      x0, w0, flow_state
+    cbnz        w0, .exit
+    uart_chr    '#'
+    uart_chr    XOFF
+    mov         w0, 1
+    pstoreb     x1, w0, flow_state
+    b           .exit
+.xon:
+    ploadb      x0, w0, flow_state
+    cbz         w0, .exit
+    uart_chr    '!'
+    uart_chr    XON
+    mov         w0, 0
+    pstoreb     x1, w0, flow_state
+.exit:    
+    ldp         x0, x30, [sp]
+    ldp         x1, x2, [sp, #16]
+    add         sp, sp, #32
+    ret
+
+; =========================================================
+;
 ; uart_recv
 ;
 ; stack:
@@ -141,15 +196,17 @@ uart_status:
 uart_recv:
     sub         sp, sp, #16
     stp         x0, x30, [sp]
+    bl          uart_flow
     pload       x0, w0, aux_base
     ldr         w2, [x0, AUX_MU_LSR_REG]
     ands        w2, w2, $01
     b.ne        .ready
     mov         w1, 0
-    ret
+    b           .done
 .ready: 
     ldr         w1, [x0, AUX_MU_IO_REG]
     and         w1, w1, $ff
+.done: 
     ldp         x0, x30, [sp]
     add         sp, sp, #16
     ret
@@ -171,6 +228,7 @@ uart_recv_block:
     sub         sp, sp, #32
     stp         x0, x30, [sp]
     stp         x2, x3, [sp, #16]
+    bl          uart_flow
     pload       x0, w0, aux_base
 .empty: 
     ldr         w2, [x0, AUX_MU_LSR_REG]
@@ -205,8 +263,7 @@ uart_send:
 .full:  
     ldr         w2, [x0, AUX_MU_LSR_REG]
     ands        w2, w2, $20
-    b.ne        .ready
-    b           .full
+    b.eq        .full
 .ready: 
     str         w1, [x0, AUX_MU_IO_REG]
     ldp         x0, x30, [sp]
@@ -308,8 +365,7 @@ uart_flush:
 .busy:  
     ldr         w1, [x0, AUX_MU_LSR_REG]
     tst         w1, $100
-    b.ne        .ready
-    b           .busy
+    b.eq        .busy
 .ready: 
     ldp         x0, x30, [sp]
     add         sp, sp, #16
@@ -377,7 +433,8 @@ uart_init:
     and         w1, w1, w2
     str         w1, [x0, GPIO_GPFSEL1]
     pload       x0, w0, aux_base
-    mov         w1, 3
+    ;mov         w1, 00000000_00000000_00000000_00001111b ; enable tx, rx, and auto flow control for both
+    mov         w1, 00000000_00000000_00000000_00000011b ; enable tx, rx
     str         w1, [x0, AUX_MU_CNTL_REG]
     ldp         x0, x30, [sp]
     add         sp, sp, #16
