@@ -29,12 +29,14 @@
 ; Macros Section
 ;
 ; =========================================================
-macro term_upload address, size {
+macro term_upload address {
    sub          sp, sp, #16
    mov          w25, address
-   mov          w26, size
+   mov          w26, 0
    stp          x25, x26, [sp]
-   bl           term_binary_read
+   bl           term_ihex
+   ldp          x25, x26, [sp]
+   add          sp, sp, #16
 }
 
 ; =========================================================
@@ -78,10 +80,20 @@ strdef  kernel_help, "Use the ", TERM_BOLD, TERM_UNDERLINE, "help", TERM_NOATTR,
 strdef  parse_error, TERM_BLINK, TERM_REVERSE, TERM_BOLD, " ERROR: ", TERM_NOATTR, \
    " Unable to parse command: "
 
+strdef  ihex_parse_error, TERM_BLINK, TERM_REVERSE, TERM_BOLD, " ERROR: ", TERM_NOATTR, \
+   " Intel HEX format expected ':'. "
+
+strdef  ihex_checksum_error, TERM_BLINK, TERM_REVERSE, TERM_BOLD, " ERROR: ", TERM_NOATTR, \
+   " Intel HEX format checksum error parsing data line. "
+
+
 strdef  joy0_state_label, TERM_BOLD, " joy0_state = ", TERM_NOATTR
 strdef  joy1_state_label, TERM_BOLD, " joy1_state = ", TERM_NOATTR
 
-align 16        
+ihex_line_buffer:
+   db   256 dup(CHAR_SPACE)
+
+align 4        
 
 ; =========================================================
 ;
@@ -135,31 +147,107 @@ term_prompt:
 
 ; =========================================================
 ;
-; term_binary_read
+; term_ihex
 ;
 ; stack:
 ;   target address
-;   size
+;   pad
 ;
 ; registers:
 ;   (none)
 ;
 ; =========================================================
-term_binary_read:
-   sub          sp, sp, #48
+term_ihex:
+   sub          sp, sp, #96
    stp          x0, x30, [sp]
    stp          x1, x2, [sp, #16]
    stp          x3, x4, [sp, #32]
-   ldp          x0, x2, [sp, #48]
+   stp          x5, x6, [sp, #48]
+   stp          x7, x8, [sp, #64]
+   stp          x9, x10, [sp, #80]
+   ldp          x0, x1, [sp, #96]
+   adr          x2, ihex_line_buffer
+.line:   
+   fill         w2, 256, CHAR_SPACE
+   mov          w3, w2
 .loop:   
    bl           uart_recv_block
-   strb         w1, [x0], 1
-   subs         w2, w2, 1
+   uart_chr     w1
+   cmp          w1, '!'
+   b.eq         .done
+   cmp          w1, CHAR_RETURN
+   b.eq         .loop
+   cmp          w1, CHAR_LINEFEED
+   b.eq         .parse
+   strb         w1, [x3], 1
    b.ne         .loop
+.parse:
+   mov          w3, w2
+   ldrb         w4, [x3], 1
+   cmp          w4, ':'
+   b.ne         .error
+   str_nbr      w3, 2, 16       
+   mov          w5, w20         ; number of data bytes
+   add          w3, w3, 2
+   str_nbr      w3, 4, 16
+   mov          w6, w20
+   add          w3, w3, 4
+   str_nbr      w3, 2, 16
+   cbz          w20, .data
+   cmp          w20, 1
+   b.eq         .eof
+   b            .line
+.data:
+   mov          w4, 0
+   add          w4, w4, w5
+   and          w7, w6, $ff
+   add          w4, w4, w7
+   lsr          w7, w6, 8
+   and          w7, w7, $ff
+   add          w4, w4, w7
+   add          w4, w4, w20
+.byte:
+   add          w3, w3, 2
+   str_nbr      w3, 2, 16
+   add          w4, w4, w20
+   strb         w20, [x0], 1
+   subs         w5, w5, 1
+   b.ne         .byte   
+   and          w4, w4, $ff
+   neg          w4, w4
+   and          w4, w4, $ff
+   add          w3, w3, 2
+   str_nbr      w3, 2, 16
+   cmp          w4, w20
+   b.ne         .checksum_error  
+   b            .line
+.eof:
+   mov          w8, 0
+   b            .done
+.error:
+   mov          w8, 1
+   uart_str     ihex_parse_error
+   b            .line
+.checksum_error:
+   mov          w8, 2 
+   uart_str     ihex_checksum_error
+   uart_nl
+   uart_hex8    w4
+   uart_chr     '!'
+   uart_chr     '='
+   uart_hex8    w20
+   uart_nl
+   b            .line
+.done:
+   mov          w2, 0
+   stp          x8, x2, [sp, #96]
    ldp          x0, x30, [sp]
    ldp          x1, x2, [sp, #16]
    ldp          x3, x4, [sp, #32]
-   add          sp, sp, #64
+   ldp          x5, x6, [sp, #48]
+   ldp          x7, x8, [sp, #64]
+   ldp          x9, x10, [sp, #80]
+   add          sp, sp, #96
    ret
 
 ; =========================================================

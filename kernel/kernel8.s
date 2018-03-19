@@ -105,6 +105,13 @@ kernel_core:
     bl          timer_update
     bl          term_update
     page_ld
+    ploadb      x1, w1, game_enabled
+    cbz         w1, .no_game
+    pload       x1, w1, game_tick_vector
+    cbz         w1, .no_game
+    blr         x1
+    b           .skip    
+.no_game:    
     bl          page_clear
     bl          console_draw
     bl          caret_draw
@@ -211,8 +218,8 @@ game_top:
 game_init_vector: dw    0
 game_tick_vector: dw    0 
 
-title:            db    64 dup(?)
-author:           db    64 dup(?)
+title:            db    32 dup(?)
+author:           db    32 dup(?)
 version:          db    0
 revision:         db    0
 

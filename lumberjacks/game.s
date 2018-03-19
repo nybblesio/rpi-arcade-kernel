@@ -34,17 +34,21 @@ format      binary as 'img'
 ; Game Entry Point
 ;
 ; =========================================================
+include     'macros.s'
 include     'kernel_abi.s'
 
 org GAME_BOTTOM
 
-game_init_vector: dw  game_init
-game_tick_vector: dw  game_tick 
+game_init_vector: 
+    dw  game_init
 
-title:            db "Lumberjacks                                                      "
-author:           db "Jeff Panici                                                      "
-version:          db 1
-revision:         db 0
+game_tick_vector: 
+    dw  game_tick 
+
+strpad      title, 32, "Lumberjacks"
+strpad      author, 32, "Jeff Panici"
+version:    db 1
+revision:   db 1
 
 include     'constants.s'
 include     'macros.s'
@@ -135,7 +139,7 @@ macro spr_user data {
 }
 
 
-align 16
+align 4
 
 ; =========================================================
 ;
@@ -171,17 +175,17 @@ draw_tile:
     add         w0, w0, w6
 
     adr         x5, timber_bg
-    add         w3, w3, w5
+    add         w5, w5, w3
     mov         w6, TILE_HEIGHT
 .raster:    
     mov         w7, TILE_WIDTH
 .pixel:
     ldrb        w8, [x5], 1
-    add         w5, w5, w4
-    strb        w5, [x0], 1
+    add         w8, w8, w4
+    strb        w8, [x0], 1
     subs        w7, w7, 1
     b.ne        .pixel
-    add         x0, x0, SCREEN_WIDTH - TILE_WIDTH
+    add         w0, w0, SCREEN_WIDTH - TILE_WIDTH
     subs        w6, w6, 1
     b.ne        .raster
     ldp         x0, x30, [sp]
@@ -230,8 +234,8 @@ draw_stamp:
     madd        w6, w1, w5, w2
     add         w0, w0, w6
 
-    adr         x5, timber_bg
-    add         w3, w3, w5
+    adr         x5, timber_fg
+    add         w5, w5, w3
     mov         w6, SPRITE_HEIGHT
 .raster:    
     mov         w7, SPRITE_WIDTH
@@ -246,7 +250,7 @@ draw_stamp:
 .done:  
     subs        w7, w7, 1
     b.ne        .pixel
-    add         x0, x0, SCREEN_WIDTH - SPRITE_WIDTH
+    add         w0, w0, SCREEN_WIDTH - SPRITE_WIDTH
     subs        w6, w6, 1
     b.ne        .raster
 

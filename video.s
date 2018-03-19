@@ -115,6 +115,11 @@ fps_count:  dw  0
 
 timerdef    timer_fps, 2, 1000, video_fps_callback
 
+dmadef      clear_page, \
+            DMA_TDMODE + DMA_DEST_INC + DMA_DEST_WIDTH + DMA_SRC_INC + DMA_SRC_WIDTH, \
+            SCREEN_WIDTH + ((SCREEN_HEIGHT - 1) * 65536), \
+            65536
+
 align 4
 
 ; =========================================================

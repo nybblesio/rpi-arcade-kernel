@@ -152,8 +152,7 @@ commands:
     cmddef cmd_load, "load", \
         "Load a game image over the serial terminal.", \
         cmd_load_func, \
-        1
-    parmdef cmd_load_size, "size", PARAM_TYPE_NUMBER, TRUE
+        0
 
     cmddef cmd_unload, "unload", \
         "Unload the currently loaded game image.", \
@@ -206,6 +205,7 @@ strdef  info_tick,  "game_tick_vector: "
 strdef  info_state, "    game_enabled: "
 
 strdef  load_msg, "game image loaded.", TERM_NEWLINE
+strdef  no_load_msg, "game image did not load.", TERM_NEWLINE
 strdef  unloaded_msg, "game image unloaded.", TERM_NEWLINE
 
 strdef  info_nothing_loaded, "no game image is loaded.", TERM_NEWLINE
@@ -232,15 +232,18 @@ cmd_load_func:
     sub         sp, sp, #32
     stp         x0, x30, [sp]
     stp         x1, x2, [sp, #16]
-    debug       "cmd_load_func start."
-    adr         x0, params
-    ldr         w1, [x0, 0]
-    debug_reg   w1, reg_w1, "    size: "
+    info        "Execute 'load' command in cmd_load_func."
     adr         x0, game_top
     debug_reg   w0, reg_w0, "game top: "
-    term_upload w0, w1
+    term_upload w0
+    cbnz        w25, .error
+    uart_nl
     uart_str    load_msg
-    debug       "cmd_load_func stop."
+    b           .exit
+.error:
+    uart_nl
+    uart_str    no_load_msg
+.exit:    
     ldp         x0, x30, [sp]
     ldp         x1, x2, [sp, #16]
     add         sp, sp, #32
@@ -261,7 +264,9 @@ cmd_unload_func:
     sub         sp, sp, #32
     stp         x0, x30, [sp]
     stp         x1, x2, [sp, #16]
+    info        "Execute 'unload' command in cmd_unload_func."
     mov         w1, 0
+    pstoreb     x0, w1, game_enabled
     pstore      x0, w1, game_init_vector
     pstore      x0, w1, game_tick_vector
     uart_str    unloaded_msg
@@ -285,9 +290,17 @@ cmd_run_func:
     sub         sp, sp, #32
     stp         x0, x30, [sp]
     stp         x1, x2, [sp, #16]
+    info        "Execute 'run' command in cmd_run_func."
+    pload       x1, w1, game_init_vector
+    cbz         w1, .no_game
+    blr         x1
     mov         w1, 1
     pstoreb     x0, w1, game_enabled
     uart_str    start_msg
+    b           .done
+.no_game:
+    uart_str    info_nothing_loaded
+.done:    
     ldp         x0, x30, [sp]
     ldp         x1, x2, [sp, #16]
     add         sp, sp, #32
@@ -309,6 +322,7 @@ cmd_stop_func:
     sub         sp, sp, #32
     stp         x0, x30, [sp]
     stp         x1, x2, [sp, #16]
+    info        "Execute 'stop' command in cmd_stop_func."
     mov         w1, 0
     pstoreb     x0, w1, game_enabled
     uart_str    stop_msg
@@ -333,14 +347,19 @@ cmd_info_func:
     stp         x0, x30, [sp]
     stp         x1, x2, [sp, #16]
     stp         x3, x4, [sp, #32]
+    info        "Execute 'info' command in cmd_info_func."
     pload       x0, w0, game_init_vector
     cbz         w0, .nothing
     pload       x1, w1, game_tick_vector
     uart_str    info_title
-    uart_strl   title, 64
+    uart_chr    "'"
+    uart_strl   title, 32
+    uart_chr    "'"
     uart_nl
     uart_str    info_author
-    uart_strl   author, 64
+    uart_chr    "'"
+    uart_strl   author, 32
+    uart_chr    "'"
     uart_nl
     uart_str    info_ver
     ploadb      x2, w2, version 
@@ -384,6 +403,7 @@ cmd_info_func:
 cmd_fps_func:
     sub         sp, sp, #16
     stp         x0, x30, [sp]
+    info        "Execute 'fps' command in cmd_fps_func."
     uart_str    fps_label
     pload       x0, w0, fps
     uart_hex8   w0

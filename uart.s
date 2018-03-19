@@ -157,12 +157,11 @@ uart_flow:
     cbz         w1, .xon
     ploadb      x0, w0, flow_state
     cbnz        w0, .exit
-    cmp         w1, 2
+    cmp         w1, 5
     b.ls        .exit
 .xoff:
     ploadb      x0, w0, flow_state
     cbnz        w0, .exit
-    uart_chr    '#'
     uart_chr    XOFF
     mov         w0, 1
     pstoreb     x1, w0, flow_state
@@ -170,7 +169,6 @@ uart_flow:
 .xon:
     ploadb      x0, w0, flow_state
     cbz         w0, .exit
-    uart_chr    '!'
     uart_chr    XON
     mov         w0, 0
     pstoreb     x1, w0, flow_state

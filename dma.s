@@ -26,32 +26,31 @@
 
 ; =========================================================
 ;
-; Data Section
+; Constants
 ;
 ; =========================================================
-;align 16
-;tile_copy   dma_control DMA_TDMODE + DMA_DEST_INC + DMA_DEST_WIDTH + DMA_SRC_INC + DMA_SRC_WIDTH
+DMA_CON_FLAGS  = 0
+DMA_CON_SRC    = 4
+DMA_CON_DEST   = 8
+DMA_CON_LEN    = 12
+DMA_CON_STRIDE = 16
+DMA_CON_NEXT   = 20
 
 ; =========================================================
 ;
 ; Macros
 ;
 ; =========================================================
-struc dma_control flags*, len, stride {
-        .flags  dw      flags
-        .src    dw      0
-        .dest   dw      0
-        if len eq
-                .len    dw      0
-        else
-                .len    dw      len
-        end if
-        if stride eq
-                .stride dw      0
-        else                                 
-                .stride dw      stride
-        end if                
-        .next   dw      0
+macro dmadef name*, flags*, len*, stride* {
+align 32
+common
+label name
+    dw  flags
+    dw  0
+    dw  0
+    dw  len
+    dw  stride
+    dw  0
 }
 
 ; =========================================================
@@ -66,9 +65,79 @@ struc dma_control flags*, len, stride {
 ;
 ; =========================================================
 dma_init:
-        mov     x0, PERIPHERAL_BASE
-        orr     x0, x0, DMA_ENABLE
-        mov     w1, DMA_EN0
-        str     w1, [x0]
-        ret
+    pload       x0, w0, dma_enable_base
+    mov         w1, DMA_EN0 or DMA_EN1 or DMA_EN2 or DMA_EN3
+    str         w1, [x0]
+    ret
 
+; =========================================================
+;
+; dma_start
+;
+; stack:
+;   dma control block address
+;   dma base address
+;
+; registers:
+;   (none)
+;
+; =========================================================
+dma_start:
+    sub         sp, sp, #48
+    stp         x0, x30, [sp]
+    stp         x1, x2, [sp, #16]
+    stp         x3, x4, [sp, #32]
+    ldp         x0, x1, [sp, #48]
+    mov         w2, BUS_ADDRESSES_l2CACHE_DISABLED
+    add         w0, w0, w2
+    mov         w2, DMA_ENABLE
+    str         w0, [x1]
+    str         w2, [x1, DMA_CS]
+    ldp         x0, x30, [sp]
+    ldp         x1, x2, [sp, #16]
+    ldp         x3, x4, [sp, #32]
+    add         sp, sp, #64
+    ret
+
+macro dma_start con_blk_addr, dma_base_addr {
+    sub         sp, sp, #16
+    mov         x25, con_blk_addr
+    mov         x26, dma_base_addr
+    stp         x25, x26, [sp]
+    bl          dma_start
+}
+
+; =========================================================
+;
+; dma_wait
+;
+; stack:
+;   dma base address
+;   pad
+;
+; registers:
+;   (none)
+;
+; =========================================================
+dma_wait:
+    sub         sp, sp, #32
+    stp         x0, x30, [sp]
+    stp         x1, x2, [sp, #16]
+    ldp         x0, x1, [sp, #32]
+    mov         w1, DMA_ACTIVE
+.loop:    
+    ldr         w2, [x0, DMA_CS]
+    tst         w2, w1
+    b.ne        .loop
+    ldp         x0, x30, [sp]
+    ldp         x1, x2, [sp, #16]
+    add         sp, sp, #48
+    ret
+
+macro dma_wait dma_base_addr {
+    sub         sp, sp, #16
+    mov         x25, dma_base_addr
+    mov         x26, 0
+    stp         x25, x26, [sp]
+    bl          dma_wait
+}

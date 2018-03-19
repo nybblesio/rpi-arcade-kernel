@@ -63,3 +63,13 @@ label name
     strlist params
 .end:
 }
+
+macro strpad name, len, [params] {
+common
+label name
+    local   .end, .start
+.start:        
+    strlist params
+.end:
+    db len - (.end - .start) dup(CHAR_SPACE)
+}
