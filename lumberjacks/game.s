@@ -48,7 +48,7 @@ game_tick_vector:
 strpad      title, 32, "Lumberjacks"
 strpad      author, 32, "Jeff Panici"
 version:    db 1
-revision:   db 1
+revision:   db 2
 
 include     'constants.s'
 include     'macros.s'

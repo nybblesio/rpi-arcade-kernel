@@ -170,9 +170,10 @@ term_ihex:
 .line:   
    fill         w2, 256, CHAR_SPACE
    mov          w3, w2
-.loop:   
+.loop:
+   ; XXX: check upper bound of the line buffer
    bl           uart_recv_block
-   uart_chr     w1
+   ;uart_chr     w1
    cmp          w1, '!'
    b.eq         .done
    cmp          w1, CHAR_RETURN
