@@ -24,8 +24,6 @@ IMPORTANT NOTES
 Tasks
 -----
 
-- XXX: review timer.s because i refactored timer_update and it should be tested again
-
 - PERF: frame rate drops as the number of rendered lines increased on the console.
         NOTE 1: inlining of draw_string didn't seem to help much
         NOTE 2: use DMA?
@@ -126,4 +124,4 @@ DONE
        fix ASCII offset for remainer lines
 - FIX: string_number converts lowercase a-z to uppercase
 - command: fps
-
+- XXX: review timer.s because i refactored timer_update and it should be tested again

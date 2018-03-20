@@ -41,13 +41,13 @@ macro fill buffer, len, value {
 }
 
 macro copy src, dest, len {
-    sub         sp, sp, 32
-    mov         w20, src
-    mov         w21, dest
-    stp         x20, x21, [sp]
-    mov         w20, len
-    mov         w21, 0
-    stp         x20, x21, [sp, #16]
+    sub         sp, sp, #32
+    mov         w25, src
+    mov         w26, dest
+    stp         x25, x26, [sp]
+    mov         w25, len
+    mov         w26, 0
+    stp         x25, x26, [sp, #16]
     bl          copy_buffer
 }
 

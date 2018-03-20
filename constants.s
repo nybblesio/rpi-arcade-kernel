@@ -30,6 +30,7 @@ FALSE                   = 0
 SCREEN_WIDTH            = 512
 SCREEN_HEIGHT           = 480
 SCREEN_BITS_PER_PIXEL   = 8
+SCREEN_BYTES            = SCREEN_WIDTH * SCREEN_HEIGHT
 
 TILE_WIDTH              = 16
 TILE_HEIGHT             = 16
