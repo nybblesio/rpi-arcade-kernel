@@ -99,9 +99,7 @@ kernel_core:
     uart_nl
     bl          term_prompt
     bl          console_welcome
-
-    adr         x1, render_timer
-    bl          timer_start
+    timer_start render_timer
 
 .loop:
     bl          timer_update

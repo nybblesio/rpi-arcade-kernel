@@ -169,8 +169,7 @@ video_init:
     b2p         w0
     adr         x1, frame_buffer.data1
     str         w0, [x1]
-    adr         x1, timer_fps
-    bl          timer_start
+    timer_start timer_fps
     ldp         x0, x30, [sp]
     add         sp, sp, #16
     ret

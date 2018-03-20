@@ -24,17 +24,17 @@
 ;
 ; =========================================================
 
-TIMER_COUNT      = 32;
+TIMER_COUNT         = 32
 
-F_TIMER_DISABLED = 00000000_00000000_00000000_00000000b;
-F_TIMER_ENABLED  = 00000000_00000000_00000000_00000001b;
-F_TIMER_FIRED    = 00000000_00000000_00000000_00000010b;
+F_TIMER_DISABLED    = 00000000_00000000_00000000_00000000b
+F_TIMER_ENABLED     = 00000000_00000000_00000000_00000001b
+F_TIMER_FIRED       = 00000000_00000000_00000000_00000010b
 
-TIMER_ID       = 0
-TIMER_STATUS   = 4
-TIMER_DURATION = 8
-TIMER_TIMEOUT  = 12
-TIMER_CALLBACK = 16
+TIMER_ID            = 0
+TIMER_STATUS        = 4
+TIMER_DURATION      = 8
+TIMER_TIMEOUT       = 12
+TIMER_CALLBACK      = 16
 
 ; =========================================================
 ;
@@ -43,9 +43,9 @@ TIMER_CALLBACK = 16
 ; =========================================================
 macro delay duration {
     sub         sp, sp, 16
-    mov         w20, duration
-    mov         w21, 0
-    stp         x20, x21, [sp]
+    mov         w25, duration
+    mov         w26, 0
+    stp         x25, x26, [sp]
     bl          timer_wait
 }
 
@@ -74,6 +74,7 @@ align 4
 timer_settings1 dw  $00f90000
 timer_settings2 dw  $00f90200
 
+align 4
 timers:
     dw  TIMER_COUNT dup(0)
 
@@ -113,33 +114,52 @@ timer_wait:
 ; timer_start
 ;
 ; stack:
-;   (none)
+;   (in) timer structure address
+;   (in) pad
+;
+;   (out) pointer to timer entry
+;   (out) pad
 ;
 ; registers:
-;   w1 pointer to timer structure
-;   w2 is the pointer to the newly added timer
+;   (none)
 ;
 ; =========================================================
 timer_start:
-    sub         sp, sp, #16
+    sub         sp, sp, #48
     stp         x0, x30, [sp]
+    stp         x1, x2, [sp, #16]
+    stp         x3, x4, [sp, #32]
+    ldp         x3, x4, [sp, #48]
     adr         x0, timers
-    mov         w3, TIMER_COUNT
+    mov         w1, TIMER_COUNT
 .loop:
     ldr         w2, [x0]
     cbnz        w2, .next
-    str         w1, [x0]
-    mov         w2, w0
+    str         w3, [x0]
     b           .done
 .next:
-    add         x0, x0, 4
-    subs        w3, w3, 1
+    add         w0, w0, 4
+    subs        w1, w1, 1
     b.ne        .loop
-    mov         w2, 0
-.done:    
+    mov         w0, 0
+.done: 
+    mov         w1, 0
+    stp         x0, x1, [sp, #48]
     ldp         x0, x30, [sp]
-    add         sp, sp, #16
+    ldp         x1, x2, [sp, #16]
+    ldp         x3, x4, [sp, #32]
+    add         sp, sp, #48
     ret
+
+macro timer_start addr {
+    sub         sp, sp, #16
+    adr         x25, addr
+    mov         x26, 0
+    stp         x25, x26, [sp]
+    bl          timer_start
+    ldp         x25, x26, [sp]
+    add         sp, sp, #16
+}
 
 ; =========================================================
 ;
@@ -158,7 +178,7 @@ timer_update:
     stp         x1, x2, [sp, #16]
     stp         x3, x4, [sp, #32]
     stp         x5, x6, [sp, #48]
-
+    pload       x4, w4, arm_timer_counter
     adr         x0, timers
     mov         w1, TIMER_COUNT
 .loop:
@@ -169,8 +189,8 @@ timer_update:
     b.ne        .next
     ldr         w3, [x2, TIMER_TIMEOUT]
     cbz         w3, .reset
-    bl          timer_tick
-    cmp         w25, w3
+    ldr         w5, [x4]
+    cmp         w5, w3
     b.cc        .next
     ldr         w3, [x2, TIMER_CALLBACK]
     blr         x3
@@ -179,34 +199,17 @@ timer_update:
     ;str         w3, [x2, TIMER_STATUS]
 .reset:
     ldr         w3, [x2, TIMER_DURATION]
-    bl          timer_tick
-    add         w3, w25, w3
+    ldr         w5, [x4]
+    add         w3, w5, w3
     str         w3, [x2, TIMER_TIMEOUT]
 .next:    
     subs        w1, w1, 1
     b.ne        .loop
-
     ldp         x0, x30, [sp]
     ldp         x1, x2, [sp, #16]
     ldp         x3, x4, [sp, #32]
     ldp         x5, x6, [sp, #48]
     add         sp, sp, #64
-    ret
-
-; =========================================================
-;
-; timer_tick
-;
-; stack:
-;   (none)
-;
-; registers:
-;   w0 return tick value
-;
-; =========================================================
-timer_tick:
-    pload       x25, w25, arm_timer_counter
-    ldr         w25, [x25]
     ret
 
 ; =========================================================
@@ -217,15 +220,19 @@ timer_tick:
 ;   (none)
 ;
 ; registers:
-;   w0 arm timer controller address
-;   w1 timer settings 1 & 2
+;   (none)
 ;
 ; =========================================================
 timer_init:
+    sub         sp, sp, #32
+    stp         x0, x30, [sp]
+    stp         x1, x2, [sp, #16]
     pload       x0, w0, arm_timer_controller
     pload       x1, w1, timer_settings1
     str         w1, [x0]
     pload       x1, w1, timer_settings2
     str         w1, [x0]
+    ldp         x0, x30, [sp]
+    ldp         x1, x2, [sp, #16]
+    add         sp, sp, #32
     ret
-

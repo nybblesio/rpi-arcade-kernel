@@ -20,3 +20,4 @@ lumberjacks/game.hex: lumberjacks/game.img
 	arm-none-eabi-objcopy -I binary --output-target=ihex lumberjacks/game.img lumberjacks/game.hex
 	dos2unix lumberjacks/game.hex
 	cat lumberjacks/game.hex | xclip -selection c
+	cp lumberjacks/game.hex /media/psf/Home/Desktop/lumberjacks.hex

@@ -304,8 +304,7 @@ console_welcome:
     ldr         w1, [x0], 4
     con_write   x0, x1, $0f
     con_caret   4, 0, $0f
-    adr         x1, timer_caret_blink
-    bl          timer_start
+    timer_start timer_caret_blink
     ldp         x0, x30, [sp]
     add         sp, sp, #16
     ret
