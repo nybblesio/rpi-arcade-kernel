@@ -334,7 +334,7 @@ console_caret_nl:
     mov         w4, CHARS_PER_LINE * 2
     add         w2, w3, w4
     mov         w4, ((LINES_PER_PAGE - 1) * CHARS_PER_LINE) * 2
-    copy        w2, w3, w4
+    mem_copy8   w2, w3, w4
     add         w2, w3, w4
     mov         w1, $0f
     mov         w3, CHAR_SPACE

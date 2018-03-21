@@ -134,9 +134,9 @@ term_prompt:
    sub          sp, sp, #16
    stp          x0, x30, [sp]
    adr          x0, command_buffer
-   fill         w0, TERM_CHARS_PER_LINE, CHAR_SPACE
+   mem_fill8    w0, TERM_CHARS_PER_LINE, CHAR_SPACE
    adr          x0, token_offsets
-   fill         w0, TOKEN_OFFSET_COUNT, 0
+   mem_fill8    w0, TOKEN_OFFSET_COUNT, 0
    mov          w1, 0 
    pstore       x0, w1, command_buffer_offset
    uart_chr     '>'
@@ -168,7 +168,7 @@ term_ihex:
    ldp          x0, x1, [sp, #96]
    adr          x2, ihex_line_buffer
 .line:   
-   fill         w2, 256, CHAR_SPACE
+   mem_fill8    w2, 256, CHAR_SPACE
    mov          w3, w2
 .loop:
    ; XXX: check upper bound of the line buffer
