@@ -13,7 +13,7 @@ DEPS=command.s console.s constants.s dma.s font.s \
 kernel/kernel8.img: kernel/kernel8.s $(DEPS)
 	fasmarm $<
 
-lumberjacks/game.img: lumberjacks/game.s $(DEPS)
+lumberjacks/game.img: lumberjacks/game.s $(DEPS) assets/timbg.bin assets/timfg.bin
 	fasmarm $<
 
 lumberjacks/game.hex: lumberjacks/game.img
