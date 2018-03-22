@@ -204,9 +204,10 @@ strdef  info_init,  "game_init_vector: "
 strdef  info_tick,  "game_tick_vector: "
 strdef  info_state, "    game_enabled: "
 
-strdef  load_msg, "game image loaded.", TERM_NEWLINE
-strdef  no_load_msg, "game image did not load.", TERM_NEWLINE
-strdef  unloaded_msg, "game image unloaded.", TERM_NEWLINE
+strdef  load_msg, "Game image loaded.", TERM_NEWLINE
+strdef  no_load_msg, "Game image did not load.", TERM_NEWLINE
+strdef  unloaded_msg, "Game image unloaded.", TERM_NEWLINE
+strdef  game_running_msg, "Game image is currently running.  Use 'stop' command and then 'load'.", TERM_NEWLINE
 
 strdef  info_nothing_loaded, "no game image is loaded.", TERM_NEWLINE
 
@@ -233,8 +234,9 @@ cmd_load_func:
     stp         x0, x30, [sp]
     stp         x1, x2, [sp, #16]
     info        "Execute 'load' command in cmd_load_func."
+    ploadb      x0, w0, game_enabled
+    cbnz        w0, .running
     adr         x0, game_top
-    debug_reg   w0, reg_w0, "game top: "
     term_upload w0
     cbnz        w25, .error
     uart_nl
@@ -243,6 +245,10 @@ cmd_load_func:
 .error:
     uart_nl
     uart_str    no_load_msg
+    b           .exit
+.running:
+    uart_nl
+    uart_str    game_running_msg
 .exit:    
     ldp         x0, x30, [sp]
     ldp         x1, x2, [sp, #16]
