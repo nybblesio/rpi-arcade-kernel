@@ -99,28 +99,16 @@ kernel_core:
     uart_nl
     bl          term_prompt
     bl          console_welcome
-    timer_start render_timer
 
 .loop:
     bl          timer_update
     bl          term_update
-    b           .loop
-
-render_callback:
-    sub         sp, sp, #80
-    stp         x0, x30, [sp]
-    stp         x1, x2, [sp, #16]
-    stp         x3, x4, [sp, #32]
-    stp         x5, x6, [sp, #48]
-    stp         x10, x11, [sp, #64]
-
-    bl          joy_read
-
     page_ld
     ploadb      x1, w1, game_enabled
     cbz         w1, .no_game
     pload       x1, w1, game_tick_vector
     cbz         w1, .no_game
+    bl          joy_read
     blr         x1
     b           .skip
 
@@ -131,19 +119,7 @@ render_callback:
     
 .skip:    
     bl          page_swap
-
-.exit:    
-    adr         x0, render_timer
-    mov         w1, F_TIMER_ENABLED
-    str         w1, [x0, TIMER_STATUS]
-
-    ldp         x0, x30, [sp]
-    ldp         x1, x2, [sp, #16]
-    ldp         x3, x4, [sp, #32]
-    ldp         x5, x6, [sp, #48]
-    ldp         x10, x11, [sp, #64]
-    add         sp, sp, #80
-    ret
+    b           .loop
 
 ; =========================================================
 ;
@@ -201,7 +177,6 @@ core_three:
 ; Data Section
 ;
 ; =========================================================
-timerdef    render_timer, 3, 16, render_callback
 
 ; =========================================================
 ;

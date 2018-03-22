@@ -692,7 +692,8 @@ cmd_joy0_func:
     stp         x0, x30, [sp]
     stp         x1, x2, [sp, #16]
     info        "Execute 'j0' command in cmd_joy0_func."
-    
+  
+    bl          joy_read
     ploadb      x0, w0, joy0_r
     uart_strl   cmd_joy_r, JOY_LABEL_LEN
     uart_hex8   w0
@@ -790,6 +791,7 @@ cmd_joy1_func:
     stp         x0, x30, [sp]
     info        "Execute 'j1' command in cmd_joy1_func."
 
+    bl          joy_read
     ploadb      x0, w0, joy1_r
     uart_strl   cmd_joy_r, JOY_LABEL_LEN
     uart_hex8   w0
