@@ -188,9 +188,7 @@ bg_set:
     ldr         w4, [x0], 4
     str         w4, [x2, BG_TILE]
     strb        w1, [x2, BG_PAL]
-    ldrb        w4, [x2, BG_FLAGS]
-    orr         w4, w4, w5
-    strb        w4, [x2, BG_FLAGS]
+    strb        w5, [x2, BG_FLAGS]
     add         x2, x2, BG_CON_SZ
     subs        w3, w3, 1
     b.ne        .loop
@@ -633,8 +631,8 @@ game_init:
     sub         sp, sp, #16
     stp         x0, x30, [sp]
     fg_reset   
-    ;bg_set      title_bg, 1
-    bg_set      playfield_bg, 1
+    bg_set      title_bg, 1
+    ;bg_set      playfield_bg, 1
     spr         0
     spr_pos     256, 128
     spr_flags   F_SPR_CHANGED or F_SPR_ENABLED
