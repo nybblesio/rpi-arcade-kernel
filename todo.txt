@@ -1,28 +1,29 @@
 TODO LIST
 ---------
 
-Admin
-------
+ Admin
+--------
 
 - need a nice name for this project
 - project website
 - write up a really good README.md
 
-Questions & Ponderings
-----------------------
+ Questions & Ponderings
+------------------------
+
 - UBER IMPORTANT: implement 64-bit exception table vectors for IRQ & FIRQ at a minimum
     ; Set fake_vsync_isr=1 in config.txt and I will trigger the SMI interrupt (48) from my vsync callback.
     ; In your ISR, you should write 0 to SMICS (0x7E600000/0x20600000) to clear it.
 
-IMPORTANT NOTES
----------------
+ IMPORTANT NOTES
+-----------------
 
 - I set force_turbo=1 in config.txt so the core clock runs at 400Mhz
 - The ARM_TIMER_CTL is currently configured assuming 250Mhz clock, so the counts are now double what they were
 - Monitor the CPU thermal levels because now it's running at full bore
 
-Tasks
------
+ Tasks
+-------
 
 - PERF: frame rate drops as the number of rendered lines increased on the console.
         NOTE 1: inlining of draw_string didn't seem to help much
@@ -32,67 +33,8 @@ Tasks
 
 - command_find: add errors to a small buffer for output in terminal
 
-- command_find: renumber & save all state
-
-- params array should be an array of small structures that has type and word value combined
-
-- command: load
-
-- command: unload
-
-- command: info
-    - return game title, author, verison, revision information
-
-- command: run
-
-- command: stop
-
-KERNEL
+ Done
 ------
-
-    **** update this section so it's more aligned with current implementation
-
- $40000000:     stack start
-                core0: $ffff
-
-                core1: $ffff
-
-                core2: $ffff
-
-                core3: $ffff
-
- $ffff:         top of our code (not fixed, just an example)
-
-
-
- $1010:         game engine tick vector (pointer)
- $1008:         game initialize vector (pointer)
- $1000:         reserved 64-bit
-
-                1. init everything
-                loop:
-                    1. poll uart
-
-                    2. poll timer
-                        VBLANK-like timer:
-                            start timer for runaway game;
-                                if expired, jump to start of kernel loop
-
-                            if (game engine tick vector) != nullptr
-                                call (game engine tick vector)
-
-                    3. process commands
-                        INSTALL:
-                            1. read bytes from uart and pokes starting at $1000
-                            2. call game initialize vector
-
-                    4. push debug state out, if enabled
-                end loop
-
-$0000:          bootloader start
-
-DONE
-----
 - make draw_string support transparency
 - write a draw_tile function -- basically draw_stamp but adjusted for background
 - write a clear_buffer function to fill video memory with a byte
@@ -125,3 +67,11 @@ DONE
 - FIX: string_number converts lowercase a-z to uppercase
 - command: fps
 - XXX: review timer.s because i refactored timer_update and it should be tested again
+- command: load
+- command: unload
+- command: info
+    - return game title, author, verison, revision information
+- command: run
+- command: stop
+- command_find: renumber & save all state
+- params array should be an array of small structures that has type and word value combined
