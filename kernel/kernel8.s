@@ -223,8 +223,11 @@ org KERNEL_ABI_TOP
 
 game_top:
 
-game_init_vector: dw    0
-game_tick_vector: dw    0 
+game_load_vector:   dw  0
+game_unload_vector: dw  0
+game_tick_vector:   dw  0
+game_run_vector:    dw  0
+game_stop_vector:   dw  0
 
 title:            db    32 dup(?)
 author:           db    32 dup(?)

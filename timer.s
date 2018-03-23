@@ -26,9 +26,8 @@
 
 TIMER_COUNT         = 32
 
-F_TIMER_DISABLED    = 00000000_00000000_00000000_00000000b
-F_TIMER_ENABLED     = 00000000_00000000_00000000_00000001b
-F_TIMER_FIRED       = 00000000_00000000_00000000_00000010b
+F_TIMER_DISABLED    = 00000000_00000000b
+F_TIMER_ENABLED     = 00000000_00000001b
 
 TIMER_ID            = 0
 TIMER_STATUS        = 4
@@ -51,15 +50,22 @@ macro delay duration {
 
 ; 1Mhz = 1000 cycles per millisecond
 ; e.g. 250ms = 250 * 1000 = 250000
-macro timerdef lbl, id, duration, callback {
-    align 4
-    label lbl
+macro timerdef name, id, duration, callback {
+align 4
+common
+label name
     dw  id
     dw  F_TIMER_ENABLED
     dw  duration * 1600 ; 250MHz/250MHz = 1MHz = 1000 cycles per millisecond
                         ; @ 400MHz
     dw  0               ; next timeout
     dw  callback
+}
+
+macro timer_flags addr*, flags* {
+    adr         x25, addr
+    mov         w26, flags
+    str         w26, [x25, TIMER_STATUS]
 }
 
 ; =========================================================
@@ -163,6 +169,43 @@ macro timer_start addr {
 
 ; =========================================================
 ;
+; timer_reset
+;
+; stack:
+;   (none)
+;
+; registers:
+;   (none)
+;
+; =========================================================
+timer_reset:
+    sub         sp, sp, #48
+    stp         x0, x30, [sp]
+    stp         x1, x2, [sp, #16]
+    stp         x3, x4, [sp, #32]
+    adr         x0, timers
+    mov         w1, TIMER_COUNT
+    mov         w3, 0
+.loop:
+    ldr         w2, [x0], 4
+    cbz         w2, .next
+    str         w3, [x2, TIMER_TIMEOUT]
+.next:
+    subs        w1, w1, 1
+    b.ne        .loop
+.done: 
+    ldp         x0, x30, [sp]
+    ldp         x1, x2, [sp, #16]
+    ldp         x3, x4, [sp, #32]
+    add         sp, sp, #48
+    ret
+
+macro timer_reset {
+    bl          timer_reset
+}
+
+; =========================================================
+;
 ; timer_update
 ;
 ; stack:
@@ -185,18 +228,19 @@ timer_update:
     ldr         w2, [x0], 4     ; ptr to timer
     cbz         w2, .next
     ldr         w3, [x2, TIMER_STATUS]
-    cmp         w3, F_TIMER_ENABLED
-    b.ne        .next
+    tst         w3, F_TIMER_ENABLED
+    b.eq        .next
     ldr         w3, [x2, TIMER_TIMEOUT]
     cbz         w3, .reset
     ldr         w5, [x4]
     cmp         w5, w3
     b.cc        .next
+    ldr         w3, [x2, TIMER_STATUS]
+    bic         w3, w3, F_TIMER_ENABLED
+    str         w3, [x2, TIMER_STATUS]
     ldr         w3, [x2, TIMER_CALLBACK]
+    cbz         w3, .next
     blr         x3
-    ;mov         w6, F_TIMER_FIRED
-    ;orr         w3, w3, w6
-    ;str         w3, [x2, TIMER_STATUS]
 .reset:
     ldr         w3, [x2, TIMER_DURATION]
     ldr         w5, [x4]

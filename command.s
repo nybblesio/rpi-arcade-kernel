@@ -193,23 +193,29 @@ cmd_joy_b:      db "JOY_B      = "
 
 strdef  fps_label, "fps = "
 
-strdef  start_msg, "game started.", TERM_NEWLINE
-strdef  stop_msg,  "game stopped.", TERM_NEWLINE
+strdef  info_title,  "             Title: "
+strdef  info_author, "            Author: "
+strdef  info_ver,    "           Version: "
+strdef  info_rev,    "               Rev: "
+strdef  info_load,   "  game_load_vector: "
+strdef  info_unload, "game_unload_vector: "
+strdef  info_tick,   "  game_tick_vector: "
+strdef  info_run ,   "   game_run_vector: "
+strdef  info_stop,   "  game_stop_vector: "
+strdef  info_state,  "      game_enabled: "
 
-strdef  info_title, "           Title: "
-strdef  info_author,"          Author: "
-strdef  info_ver,   "         Version: "
-strdef  info_rev,   "             Rev: "
-strdef  info_init,  "game_init_vector: "
-strdef  info_tick,  "game_tick_vector: "
-strdef  info_state, "    game_enabled: "
+strdef  success_leader_msg, TERM_BLINK, TERM_REVERSE, TERM_BOLD, " SUCCESS: ", TERM_NOATTR, " "
+strdef  error_leader_msg, TERM_BLINK, TERM_REVERSE, TERM_BOLD, " ERROR: ", TERM_NOATTR, " "
 
+strdef  start_msg, "Game started.", TERM_NEWLINE
+strdef  stop_msg,  "Game stopped.", TERM_NEWLINE
 strdef  load_msg, "Game image loaded.", TERM_NEWLINE
 strdef  no_load_msg, "Game image did not load.", TERM_NEWLINE
 strdef  unloaded_msg, "Game image unloaded.", TERM_NEWLINE
 strdef  game_running_msg, "Game image is currently running.  Use 'stop' command and then 'load'.", TERM_NEWLINE
+strdef  game_not_running_msg, "Game image is not running.  Use 'run' command to start the game.", TERM_NEWLINE
 
-strdef  info_nothing_loaded, "no game image is loaded.", TERM_NEWLINE
+strdef  info_nothing_loaded, "No game image is loaded.", TERM_NEWLINE
 
 strdef  mem_dump_header, TERM_REVERSE, \
     " Address  00 01 02 03 04 05 06 07    ASCII  ", \ 
@@ -236,20 +242,27 @@ cmd_load_func:
     info        "Execute 'load' command in cmd_load_func."
     ploadb      x0, w0, game_enabled
     cbnz        w0, .running
+    bl          cmd_unload_func
     adr         x0, game_top
     term_upload w0
     cbnz        w25, .error
+    pload       x0, w0, game_load_vector
+    cbz         w0, .no_load
+    blr         x0
+.no_load:    
     uart_nl
+    uart_str    success_leader_msg
     uart_str    load_msg
     b           .exit
 .error:
-    uart_nl
+    uart_str    error_leader_msg
     uart_str    no_load_msg
     b           .exit
 .running:
-    uart_nl
+    uart_str    success_leader_msg
     uart_str    game_running_msg
-.exit:    
+.exit: 
+    timer_reset
     ldp         x0, x30, [sp]
     ldp         x1, x2, [sp, #16]
     add         sp, sp, #32
@@ -271,10 +284,18 @@ cmd_unload_func:
     stp         x0, x30, [sp]
     stp         x1, x2, [sp, #16]
     info        "Execute 'unload' command in cmd_unload_func."
+    pload       x0, w0, game_unload_vector
+    cbz         w0, .no_unload
+    blr         x0
+.no_unload:    
     mov         w1, 0
     pstoreb     x0, w1, game_enabled
-    pstore      x0, w1, game_init_vector
+    pstore      x0, w1, game_load_vector
+    pstore      x0, w1, game_unload_vector
     pstore      x0, w1, game_tick_vector
+    pstore      x0, w1, game_run_vector
+    pstore      x0, w1, game_stop_vector
+    uart_str    success_leader_msg
     uart_str    unloaded_msg
     ldp         x0, x30, [sp]
     stp         x1, x2, [sp, #16]
@@ -297,21 +318,31 @@ cmd_run_func:
     stp         x0, x30, [sp]
     stp         x1, x2, [sp, #16]
     info        "Execute 'run' command in cmd_run_func."
-    pload       x1, w1, game_init_vector
-    cbz         w1, .no_game
-    blr         x1
+    ploadb      x0, w0, game_enabled
+    cbnz        w0, .already_running
+    pload       x0, w0, game_tick_vector
+    cbz         w0, .no_game
+    pload       x0, w0, game_run_vector
+    cbz         w0, .no_run
+    blr         x0
+.no_run:    
     mov         w1, 1
     pstoreb     x0, w1, game_enabled
+    uart_str    success_leader_msg
     uart_str    start_msg
     b           .done
 .no_game:
+    uart_str    error_leader_msg
     uart_str    info_nothing_loaded
+    b           .done
+.already_running:
+    uart_str    error_leader_msg
+    uart_str    game_running_msg 
 .done:    
     ldp         x0, x30, [sp]
     ldp         x1, x2, [sp, #16]
     add         sp, sp, #32
     ret
-
 
 ; =========================================================
 ;
@@ -329,9 +360,27 @@ cmd_stop_func:
     stp         x0, x30, [sp]
     stp         x1, x2, [sp, #16]
     info        "Execute 'stop' command in cmd_stop_func."
+    ploadb      x0, w0, game_enabled
+    cbz         w0, .not_running
+    pload       x0, w0, game_tick_vector
+    cbz         w0, .no_game
+    pload       x0, w0, game_stop_vector
+    cbz         w0, .no_stop
+    blr         x0
+.no_stop:    
     mov         w1, 0
     pstoreb     x0, w1, game_enabled
+    uart_str    success_leader_msg
     uart_str    stop_msg
+    b           .done
+.no_game:
+    uart_str    error_leader_msg
+    uart_str    info_nothing_loaded
+    b           .done
+.not_running:
+    uart_str    error_leader_msg
+    uart_str    game_not_running_msg
+.done:
     ldp         x0, x30, [sp]
     ldp         x1, x2, [sp, #16]
     add         sp, sp, #32
@@ -354,9 +403,8 @@ cmd_info_func:
     stp         x1, x2, [sp, #16]
     stp         x3, x4, [sp, #32]
     info        "Execute 'info' command in cmd_info_func."
-    pload       x0, w0, game_init_vector
+    pload       x0, w0, game_tick_vector
     cbz         w0, .nothing
-    pload       x1, w1, game_tick_vector
     uart_str    info_title
     uart_chr    "'"
     uart_strl   title, 32
@@ -375,18 +423,33 @@ cmd_info_func:
     ploadb      x2, w2, revision
     uart_hex8   w2
     uart_nl
-    uart_str    info_init
+    pload       x0, w0, game_load_vector
+    uart_str    info_load
     uart_hex32  w0
     uart_nl
-    uart_str    info_tick
-    uart_hex32  w1
+    pload       x0, w0, game_unload_vector
+    uart_str    info_unload
+    uart_hex32  w0
     uart_nl
-    ploadb      x2, w2, game_enabled
+    pload       x0, w0, game_tick_vector
+    uart_str    info_tick
+    uart_hex32  w0
+    uart_nl
+    pload       x0, w0, game_run_vector
+    uart_str    info_run
+    uart_hex32  w0
+    uart_nl
+    pload       x0, w0, game_stop_vector
+    uart_str    info_stop
+    uart_hex32  w0
+    uart_nl
+    ploadb      x0, w0, game_enabled
     uart_str    info_state
-    uart_hex8   w2
+    uart_hex8   w0
     uart_nl
     b           .done
 .nothing:
+    uart_str    error_leader_msg
     uart_str    info_nothing_loaded
 .done:    
     ldp         x0, x30, [sp]

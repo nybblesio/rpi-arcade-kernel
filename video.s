@@ -141,9 +141,7 @@ video_fps_callback:
     pstore      x1, w0, fps
     mov         w0, 0
     pstore      x1, w0, fps_count
-    mov         w1, F_TIMER_ENABLED
-    adr         x0, timer_fps
-    str         w1, [x0, TIMER_STATUS]
+    timer_flags timer_fps, F_TIMER_ENABLED
     ldp         x0, x30, [sp]
     ldp         x1, x2, [sp, #16]
     add         sp, sp, #32

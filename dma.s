@@ -124,10 +124,9 @@ dma_wait:
     stp         x0, x30, [sp]
     stp         x1, x2, [sp, #16]
     ldp         x0, x1, [sp, #32]
-    mov         w1, DMA_ACTIVE
 .loop:    
-    ldr         w2, [x0, DMA_CS]
-    tst         w2, w1
+    ldr         w1, [x0, DMA_CS]
+    tst         w1, DMA_ACTIVE
     b.ne        .loop
     ldp         x0, x30, [sp]
     ldp         x1, x2, [sp, #16]

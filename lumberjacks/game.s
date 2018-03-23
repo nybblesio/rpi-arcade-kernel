@@ -34,6 +34,10 @@ format      binary as 'img'
 ; Constants Section
 ;
 ; =========================================================
+ATTRACT_STATE   = 1
+GAME_STATE      = 2
+GAME_OVER_STATE = 3
+
 SPR_TILE        = 0
 SPR_Y_POS       = 2
 SPR_X_POS       = 4
@@ -81,11 +85,11 @@ include     'constants.s'
 
 org GAME_BOTTOM
 
-game_init_vector: 
-    dw  game_init
-
-game_tick_vector: 
-    dw  game_tick 
+load_vector:    dw  on_load
+unload_vector:  dw  on_unload
+tick_vector:    dw  on_tick 
+run_vector:     dw  on_run
+stop_vector:    dw  on_stop
 
 strpad      title, 32, "Lumberjacks"
 strpad      author, 32, "Jeff Panici"
@@ -313,7 +317,7 @@ bg_tile:
 .hflip:
     mov         w6, TILE_HEIGHT
 .hflip_line:    
-    add         w4, w4, TILE_WIDTH - 1
+    add         w4, w4, TILE_WIDTH
     mov         w8, w4
     mov         w5, TILE_WIDTH
 .hflip_pixel:
@@ -329,9 +333,7 @@ bg_tile:
 .check_vflip:
     tst         w1, F_BG_VFLIP
     b.eq        .exit
-
 .vflip:
-
 .exit:
     ldp         x0, x30, [sp]
     ldp         x1, x2, [sp, #16]
@@ -622,7 +624,7 @@ macro fg_update page_addr {
 
 ; =========================================================
 ;
-; game_update
+; on_update
 ;
 ; stack:
 ;   (none)
@@ -631,7 +633,7 @@ macro fg_update page_addr {
 ;   (none)
 ;
 ; =========================================================
-game_update:
+on_update:
     sub         sp, sp, #16
     stp         x0, x30, [sp]
 
@@ -639,13 +641,13 @@ game_update:
     add         sp, sp, #16
     ret
 
-macro game_update {
-    bl          game_update
+macro on_update {
+    bl          on_update
 }
 
 ; =========================================================
 ;
-; game_init
+; on_load
 ;
 ; stack:
 ;   (none)
@@ -654,27 +656,17 @@ macro game_update {
 ;   (none)
 ;
 ; =========================================================
-game_init:
+on_load:
     sub         sp, sp, #16
     stp         x0, x30, [sp]
     fg_reset   
-    ;bg_set      title_bg, title_bg_attr
-    bg_set      playfield_bg, playfield_bg_attr
-    spr         0
-    spr_pos     256, 128
-    spr_flags   F_SPR_CHANGED or F_SPR_ENABLED
-    spr_tile    1
-    spr         1
-    spr_pos     288, 128
-    spr_tile    2
-    spr_flags   F_SPR_CHANGED or F_SPR_ENABLED
     ldp         x0, x30, [sp]
     add         sp, sp, #16
     ret
 
 ; =========================================================
 ;
-; game_tick
+; on_unload
 ;
 ; stack:
 ;   (none)
@@ -683,12 +675,79 @@ game_init:
 ;   (none)
 ;
 ; =========================================================
-game_tick:
+on_unload:
+    sub         sp, sp, #16
+    stp         x0, x30, [sp]
+
+    ldp         x0, x30, [sp]
+    add         sp, sp, #16
+    ret
+
+; =========================================================
+;
+; on_run
+;
+; stack:
+;   (none)
+;   
+; registers:
+;   (none)
+;
+; =========================================================
+on_run:
+    sub         sp, sp, #16
+    stp         x0, x30, [sp]
+    ;bg_set      title_bg, title_bg_attr
+
+    ;spr         0
+    ;spr_pos     256, 128
+    ;spr_flags   F_SPR_CHANGED or F_SPR_ENABLED
+    ;spr_tile    1
+    ;spr         1
+    ;spr_pos     288, 128
+    ;spr_tile    2
+    ;spr_flags   F_SPR_CHANGED or F_SPR_ENABLED
+
+    ldp         x0, x30, [sp]
+    add         sp, sp, #16
+    ret
+
+; =========================================================
+;
+; on_stop
+;
+; stack:
+;   (none)
+;   
+; registers:
+;   (none)
+;
+; =========================================================
+on_stop:
+    sub         sp, sp, #16
+    stp         x0, x30, [sp]
+
+    ldp         x0, x30, [sp]
+    add         sp, sp, #16
+    ret
+
+; =========================================================
+;
+; on_tick
+;
+; stack:
+;   (none)
+;   
+; registers:
+;   (none)
+;
+; =========================================================
+on_tick:
     sub         sp, sp, #32
     stp         x0, x30, [sp]
     stp         x1, x2, [sp, #16]
 
-    game_update
+    on_update
     bg_update
 
     ; XXX: this is temporary to test everything
@@ -702,6 +761,24 @@ game_tick:
     ldp         x1, x2, [sp, #16]
     add         sp, sp, #32
     ret
+
+; =========================================================
+;
+; Variables Data Section
+;
+; =========================================================
+state:  db  ATTRACT_STATE
+
+struc player x, y {
+    .lives  db  3
+    .score  dw  0
+    .actor  dw  0
+    .x      dw  x
+    .y      dw  y
+}
+
+player1  player 0, 0
+player2  player 0, 0
 
 ; =========================================================
 ;

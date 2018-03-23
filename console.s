@@ -253,8 +253,9 @@ caret_draw:
 ;
 ; =========================================================
 caret_blink_callback:
-    sub         sp, sp, #16
+    sub         sp, sp, #32
     stp         x0, x30, [sp]
+    stp         x1, x2, [sp, #16]
     ploadb      x0, w0, caret_show
     cbz         w0, .one
     mov         w1, 0
@@ -264,11 +265,10 @@ caret_blink_callback:
     mov         w1, 1
     pstoreb     x0, w1, caret_show 
 .done: 
-    mov         w1, F_TIMER_ENABLED
-    adr         x0, timer_caret_blink
-    str         w1, [x0, TIMER_STATUS]
+    timer_flags timer_caret_blink, F_TIMER_ENABLED
     ldp         x0, x30, [sp]
-    add         sp, sp, #16
+    ldp         x1, x2, [sp, #16]
+    add         sp, sp, #32
     ret
 
 ; =========================================================

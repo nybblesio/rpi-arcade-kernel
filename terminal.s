@@ -86,10 +86,6 @@ strdef  ihex_parse_error, TERM_BLINK, TERM_REVERSE, TERM_BOLD, " ERROR: ", TERM_
 strdef  ihex_checksum_error, TERM_BLINK, TERM_REVERSE, TERM_BOLD, " ERROR: ", TERM_NOATTR, \
    " Intel HEX format checksum error parsing data line. "
 
-
-strdef  joy0_state_label, TERM_BOLD, " joy0_state = ", TERM_NOATTR
-strdef  joy1_state_label, TERM_BOLD, " joy1_state = ", TERM_NOATTR
-
 ihex_line_buffer:
    db   256 dup(CHAR_SPACE)
 
