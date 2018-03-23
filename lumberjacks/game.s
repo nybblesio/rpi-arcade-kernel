@@ -34,9 +34,10 @@ format      binary as 'img'
 ; Constants Section
 ;
 ; =========================================================
-ATTRACT_STATE   = 1
-GAME_STATE      = 2
-GAME_OVER_STATE = 3
+NONE_STATE_ID      = 0
+ATTRACT_STATE_ID   = 1
+GAME_STATE_ID      = 2
+GAME_OVER_STATE_ID = 3
 
 SPR_TILE        = 0
 SPR_Y_POS       = 2
@@ -74,6 +75,10 @@ F_BG_CHANGED    = 00000001b
 F_BG_HFLIP      = 00000010b
 F_BG_VFLIP      = 00000100b
 
+F_ACTOR_NONE      = 00000000b
+F_ACTOR_VISIBLE   = 00000001b
+F_ACTOR_COLLIDED  = 00000010b
+
 ; =========================================================
 ;
 ; Game Entry Point
@@ -101,6 +106,56 @@ revision:   db 2
 ; Macros Section
 ;
 ; =========================================================
+macro statedef name, enter, update, leave {
+align 4
+common
+label name
+    dw  enter
+    dw  update
+    dw  leave
+}
+
+macro state_go id {
+    mov             w25, id
+    pstoreb         x26, w25, next_state    
+}
+
+macro actordef name*, spr_no*, xpos*, ypos*, flags* {
+align 4
+common
+label name
+    dw  ypos
+    dw  xpos
+    db  spr_no
+    db  flags   ; flags
+    dw  0       ; animation ptr
+    db  0       ; frame count
+    dw  0       ; animation timer ptr
+}
+
+macro animdef name*, num_frames*, num_ms* {
+align 4
+common
+label name
+    db  num_frames
+    db  num_ms
+}
+
+macro framestart num, num_tiles {
+    db  num
+    db  num_tiles
+}
+
+macro frameend {
+}
+
+macro frametile tile, xoff, yoff, flags {
+    dw  tile
+    dw  xoff
+    dw  yoff
+    db  flags
+}
+
 macro spr number {
     adr         x25, sprite_control
     mov         w26, SPR_CON_SZ
@@ -624,6 +679,177 @@ macro fg_update page_addr {
 
 ; =========================================================
 ;
+; attract_enter_cb
+;
+; stack:
+;   (none)
+;   
+; registers:
+;   (none)
+;
+; =========================================================
+attract_enter_cb:
+    sub         sp, sp, #16
+    stp         x0, x30, [sp]
+
+    ldp         x0, x30, [sp]
+    add         sp, sp, #16
+    ret
+
+; =========================================================
+;
+; attract_update_cb
+;
+; stack:
+;   (none)
+;   
+; registers:
+;   (none)
+;
+; =========================================================
+attract_update_cb:
+    sub         sp, sp, #16
+    stp         x0, x30, [sp]
+
+    ldp         x0, x30, [sp]
+    add         sp, sp, #16
+    ret
+
+; =========================================================
+;
+; attract_leave_cb
+;
+; stack:
+;   (none)
+;   
+; registers:
+;   (none)
+;
+; =========================================================
+attract_leave_cb:
+    sub         sp, sp, #16
+    stp         x0, x30, [sp]
+
+    ldp         x0, x30, [sp]
+    add         sp, sp, #16
+    ret
+
+; =========================================================
+;
+; game_enter_cb
+;
+; stack:
+;   (none)
+;   
+; registers:
+;   (none)
+;
+; =========================================================
+game_enter_cb:
+    sub         sp, sp, #16
+    stp         x0, x30, [sp]
+
+    ldp         x0, x30, [sp]
+    add         sp, sp, #16
+    ret
+
+; =========================================================
+;
+; game_update_cb
+;
+; stack:
+;   (none)
+;   
+; registers:
+;   (none)
+;
+; =========================================================
+game_update_cb:
+    sub         sp, sp, #16
+    stp         x0, x30, [sp]
+
+    ldp         x0, x30, [sp]
+    add         sp, sp, #16
+    ret
+
+; =========================================================
+;
+; game_leave_cb
+;
+; stack:
+;   (none)
+;   
+; registers:
+;   (none)
+;
+; =========================================================
+game_leave_cb:
+    sub         sp, sp, #16
+    stp         x0, x30, [sp]
+
+    ldp         x0, x30, [sp]
+    add         sp, sp, #16
+    ret
+
+; =========================================================
+;
+; game_over_enter_cb
+;
+; stack:
+;   (none)
+;   
+; registers:
+;   (none)
+;
+; =========================================================
+game_over_enter_cb:
+    sub         sp, sp, #16
+    stp         x0, x30, [sp]
+
+    ldp         x0, x30, [sp]
+    add         sp, sp, #16
+    ret
+
+; =========================================================
+;
+; game_over_update_cb
+;
+; stack:
+;   (none)
+;   
+; registers:
+;   (none)
+;
+; =========================================================
+game_over_update_cb:
+    sub         sp, sp, #16
+    stp         x0, x30, [sp]
+
+    ldp         x0, x30, [sp]
+    add         sp, sp, #16
+    ret
+
+; =========================================================
+;
+; game_over_leave_cb
+;
+; stack:
+;   (none)
+;   
+; registers:
+;   (none)
+;
+; =========================================================
+game_over_leave_cb:
+    sub         sp, sp, #16
+    stp         x0, x30, [sp]
+
+    ldp         x0, x30, [sp]
+    add         sp, sp, #16
+    ret
+
+; =========================================================
+;
 ; on_update
 ;
 ; stack:
@@ -634,11 +860,31 @@ macro fg_update page_addr {
 ;
 ; =========================================================
 on_update:
-    sub         sp, sp, #16
+    sub         sp, sp, #32
     stp         x0, x30, [sp]
-
+    stp         x1, x2, [sp, #16]
+    ploadb      x0, w0, next_state
+    cbz         w0, .update
+    ; look up current_state if not NONE
+    ; call the leave
+    ;
+    ; set current_state to next_state
+    ; set next_state to NONE
+    ;
+    ; look up the current_state
+    ; call the enter
+    ;
+    ; bail
+.update:    
+    ploadb      x0, w0, current_state
+    lsl         w0, w0, 2
+    adr         x1, state_callbacks
+    add         w1, w1, w0
+    ldr         w0, [x1]
+    blr         x0
     ldp         x0, x30, [sp]
-    add         sp, sp, #16
+    ldp         x1, x2, [sp, #16]
+    add         sp, sp, #32
     ret
 
 macro on_update {
@@ -697,6 +943,7 @@ on_unload:
 on_run:
     sub         sp, sp, #16
     stp         x0, x30, [sp]
+    state_go    ATTRACT_STATE_ID
     ;bg_set      title_bg, title_bg_attr
 
     ;spr         0
@@ -767,18 +1014,111 @@ on_tick:
 ; Variables Data Section
 ;
 ; =========================================================
-state:  db  ATTRACT_STATE
+previous_state: db  NONE_STATE_ID
+current_state:  db  NONE_STATE_ID
+next_state:     db  NONE_STATE_ID
 
-struc player x, y {
-    .lives  db  3
-    .score  dw  0
-    .actor  dw  0
-    .x      dw  x
-    .y      dw  y
-}
+state_callbacks:
+    statedef none_state,      0, 0, 0       
+    statedef attract_state,   attract_enter_cb,   attract_update_cb,    attract_leave_cb
+    statedef game_state,      game_enter_cb,      game_update_cb,       game_leave_cb
+    statedef game_over_state, game_over_enter_cb, game_over_update_cb,  game_over_leave_cb
 
-player1  player 0, 0
-player2  player 0, 0
+player1:
+    .lives      db  3
+    .score      dw  0
+
+player2:
+    .lives      db  3
+    .score      dw  0
+
+actors:
+    actordef bird1,        0,  0, 0, F_ACTOR_NONE
+    actordef bear1,        1,  0, 0, F_ACTOR_NONE
+    actordef swarm,        5,  0, 0, F_ACTOR_NONE
+    actordef whistle,      6,  0, 0, F_ACTOR_NONE
+    actordef beehive,      9,  0, 0, F_ACTOR_NONE
+    actordef foreman,      10, 0, 0, F_ACTOR_NONE
+    actordef other_guy,    14, 0, 0, F_ACTOR_NONE
+    actordef mustache_man, 18, 0, 0, F_ACTOR_NONE
+trees:    
+    actordef tree0,        22, 0, 0, F_ACTOR_NONE
+    actordef tree2,        26, 0, 0, F_ACTOR_NONE
+    actordef tree3,        30, 0, 0, F_ACTOR_NONE
+    actordef tree4,        34, 0, 0, F_ACTOR_NONE
+    actordef tree5,        38, 0, 0, F_ACTOR_NONE
+    actordef tree6,        42, 0, 0, F_ACTOR_NONE
+    actordef tree7,        46, 0, 0, F_ACTOR_NONE
+    actordef tree8,        50, 0, 0, F_ACTOR_NONE
+    actordef tree9,        54, 0, 0, F_ACTOR_NONE
+
+animdef mustache_man_stand, 1, 0
+framestart 0, 2
+    frametile 1, 0,  0, F_SPR_NONE
+    frametile 2, 0, 32, F_SPR_NONE
+frameend
+
+animdef mustache_man_walk_right, 4, 40
+framestart 0, 2
+    frametile 6, 0,  0, F_SPR_NONE
+    frametile 7, 0, 32, F_SPR_NONE
+frameend
+framestart 1, 2
+    frametile 8, 0, 0, F_SPR_NONE
+    frametile 9, 0, 32, F_SPR_NONE
+frameend
+framestart 2, 2
+    frametile 10, 0, 0, F_SPR_NONE
+    frametile 11, 0, 32, F_SPR_NONE
+frameend
+framestart 3, 2
+    frametile 12, 0, 0, F_SPR_NONE
+    frametile 13, 0, 32, F_SPR_NONE
+frameend
+
+animdef mustache_man_walk_left, 4, 40
+framestart 0, 2
+    frametile 6, 0,  0, F_SPR_HFLIP
+    frametile 7, 0, 32, F_SPR_HFLIP
+frameend
+framestart 1, 2
+    frametile 8, 0, 0, F_SPR_HFLIP
+    frametile 9, 0, 32, F_SPR_HFLIP
+frameend
+framestart 2, 2
+    frametile 10, 0, 0, F_SPR_HFLIP
+    frametile 11, 0, 32, F_SPR_HFLIP
+frameend
+framestart 3, 2
+    frametile 12, 0, 0, F_SPR_HFLIP
+    frametile 13, 0, 32, F_SPR_HFLIP
+frameend
+
+animdef mustache_man_walk_up, 4, 40
+
+animdef mustache_man_walk_down, 4, 40
+
+animdef mustache_man_push_right, 4, 40
+
+animdef mustache_man_push_left, 4, 40
+
+animdef mustache_man_chop_right, 4, 40
+
+animdef mustache_man_chop_left, 4, 40
+
+animdef mustache_man_fall_up, 4, 40
+
+animdef mustache_man_fall_down, 4, 40
+
+animdef mustache_man_collide, 4, 40
+
+animdef mustache_man_swarm, 4, 40
+
+animdef mustache_man_shaken, 4, 40
+
+animdef mustache_man_wave, 4, 40
+
+animdef mustache_man_in_a_tree, 4, 40
 
 ; =========================================================
 ;
