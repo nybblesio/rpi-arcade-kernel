@@ -93,7 +93,7 @@ kernel_core:
     bl          dma_init
     bl          timer_init
     bl          uart_init
-    bl          joy_init
+    ;bl          joy_init
     bl          video_init
     bl          cmd_reset_func
     uart_nl
@@ -108,7 +108,7 @@ kernel_core:
     cbz         w1, .no_game
     pload       x1, w1, game_tick_vector
     cbz         w1, .no_game
-    bl          joy_read
+    ;bl          joy_read
     blr         x1
     b           .skip
 

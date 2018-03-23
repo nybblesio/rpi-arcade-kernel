@@ -194,7 +194,6 @@ uart_flow:
 uart_recv:
     sub         sp, sp, #16
     stp         x0, x30, [sp]
-    bl          uart_flow
     pload       x0, w0, aux_base
     ldr         w2, [x0, AUX_MU_LSR_REG]
     ands        w2, w2, $01
@@ -226,7 +225,6 @@ uart_recv_block:
     sub         sp, sp, #32
     stp         x0, x30, [sp]
     stp         x2, x3, [sp, #16]
-    bl          uart_flow
     pload       x0, w0, aux_base
 .empty: 
     ldr         w2, [x0, AUX_MU_LSR_REG]
@@ -402,10 +400,16 @@ uart_check:
 ; registers:
 ;   w0-w3 scratch register
 ;
+;                           core clk  baud
+; baud rate calculation: ((400000000/115200)/8) - 1
+;
 ; =========================================================
 uart_init:
-    sub         sp, sp, #16
+    sub         sp, sp, #48
     stp         x0, x30, [sp]        
+    stp         x1, x2, [sp, #16]
+    stp         x3, x4, [sp, #32]
+
     pload       x0, w0, aux_base
     mov         w1, 1
     str         w1, [x0, AUX_ENABLES]
@@ -421,19 +425,41 @@ uart_init:
     str         w1, [x0, AUX_MU_IER_REG]
     mov         w1, $C6
     str         w1, [x0, AUX_MU_IIR_REG]
-    ;mov         w1, 270
-    ; baud rate calculation: ((400000000/115200)/8) - 1
     mov         w1, 433
     str         w1, [x0, AUX_MU_BAUD_REG]
+
+    ; gpio 14
+    ; 100: sets alternate function 0 (txd0)
+    ; 010: sets alternate function 5 (txd1)
+
+    ; gpio 15
+    ; 100: sets alternate function 0 (rxd0)
+    ; 010: sets alternate function 5 (rxd1)
+
+    ; gpio 16
+    ; 111: sets alternate function 3 (cts0)
+    ; 010: sets alternate function 5 (cts1)
+
+    ; gpio 17
+    ; 111: sets alternate function 3 (rts0)
+    ; 010: sets alternate function 5 (rts1)
     pload       x0, w0, gpio_base
     ldr         w1, [x0, GPIO_GPFSEL1]
-    ldr         w2, [gpio_sel1_uart_mask1]
-    and         w1, w1, w2
+                    ;00000000_11111100_00000000_00000000b
+                    ;00000000_01001001_00100000_00000000b    
+    ;mov         w2, 11111111_00000000_00001111_11111111b
+    ;and         w1, w1, w2
+    pload       x2, w2, gpio_uart_alt5_mask
+    orr         w1, w1, w2
     str         w1, [x0, GPIO_GPFSEL1]
+
+    ; enable tx, rx, and auto flow control for both
     pload       x0, w0, aux_base
-    ;mov         w1, 00000000_00000000_00000000_00001111b ; enable tx, rx, and auto flow control for both
-    mov         w1, 00000000_00000000_00000000_00000011b ; enable tx, rx
+    mov         w1, 00000000_00000000_00000000_00001111b    
     str         w1, [x0, AUX_MU_CNTL_REG]
+
     ldp         x0, x30, [sp]
-    add         sp, sp, #16
+    ldp         x1, x2, [sp, #16]
+    ldp         x3, x4, [sp, #32]
+    add         sp, sp, #48
     ret

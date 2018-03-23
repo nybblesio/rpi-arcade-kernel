@@ -60,5 +60,5 @@ arm_timer_controller:
 arm_timer_counter:
     dw  PERIPHERAL_BASE + ARM_TIMER_CNT
 
-gpio_sel1_uart_mask1:
-    dw  $fffd2fff
+gpio_uart_alt5_mask:
+    dw  00000000_01001001_00100000_00000000b
