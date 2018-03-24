@@ -185,12 +185,14 @@ core_three:
 ; =========================================================
 game_enabled:   db 0
 
+align 4
+joy0_state: dw 0
+joy1_state: dw 0
+
 org KERNEL_ABI_BOTTOM
 
 include 'kernel_abi.s'
 
-align 4
-joy0_state: dw 0
 joy0_r:     db 0
 joy0_l:     db 0
 joy0_x:     db 0
@@ -204,8 +206,6 @@ joy0_select:db 0
 joy0_y:     db 0
 joy0_b:     db 0
 
-align 4
-joy1_state: dw 0
 joy1_r:     db 0
 joy1_l:     db 0
 joy1_x:     db 0

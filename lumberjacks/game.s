@@ -39,6 +39,11 @@ ATTRACT_STATE_ID   = 1
 GAME_STATE_ID      = 2
 GAME_OVER_STATE_ID = 3
 
+STATE_ENTER     = 0
+STATE_UPDATE    = 4
+STATE_LEAVE     = 8
+STATE_SZ        = 12
+
 SPR_TILE        = 0
 SPR_Y_POS       = 2
 SPR_X_POS       = 4
@@ -75,9 +80,25 @@ F_BG_CHANGED    = 00000001b
 F_BG_HFLIP      = 00000010b
 F_BG_VFLIP      = 00000100b
 
+ACTOR_Y_POS     = 0
+ACTOR_X_POS     = 2
+ACTOR_START_SPR = 3
+ACTOR_SPR_COUNT = 4
+ACTOR_FLAGS     = 5
+ACTOR_FRAME_IDX = 6
+ACTOR_RESERVED  = 7
+ACTOR_ANIM      = 8
+ACTOR_TIMER     = 12
+ACTOR_SZ        = 16
+
 F_ACTOR_NONE      = 00000000b
 F_ACTOR_VISIBLE   = 00000001b
 F_ACTOR_COLLIDED  = 00000010b
+
+PLAYER_LIVES = 0
+PLAYER_TREES = 2
+PLAYER_SCORE = 4
+PLAYER_SZ    = 8
 
 ; =========================================================
 ;
@@ -106,8 +127,16 @@ revision:   db 2
 ; Macros Section
 ;
 ; =========================================================
-macro statedef name, enter, update, leave {
+macro playerdef name {
 align 4
+common
+label name
+    dh  0
+    dh  0
+    dw  0
+}
+
+macro statedef name, enter, update, leave {
 common
 label name
     dw  enter
@@ -115,26 +144,35 @@ label name
     dw  leave
 }
 
+macro state_load state {
+    mov             w25, state
+    mov             w26, STATE_SZ
+    mul             w25, w25, w26
+    adr             x26, state_callbacks
+    add             w26, w26, w25
+}
+
 macro state_go id {
     mov             w25, id
     pstoreb         x26, w25, next_state    
 }
 
-macro actordef name*, spr_no*, xpos*, ypos*, flags* {
+macro actordef name*, spr_no*, spr_count*, xpos*, ypos*, flags* {
 align 4
 common
 label name
-    dw  ypos
-    dw  xpos
+    dh  ypos
+    dh  xpos
     db  spr_no
+    db  spr_count
     db  flags   ; flags
+    db  0       ; frame index
+    db  0       ; reserved
     dw  0       ; animation ptr
-    db  0       ; frame count
     dw  0       ; animation timer ptr
 }
 
 macro animdef name*, num_frames*, num_ms* {
-align 4
 common
 label name
     db  num_frames
@@ -149,79 +187,174 @@ macro framestart num, num_tiles {
 macro frameend {
 }
 
-macro frametile tile, xoff, yoff, flags {
+macro frametile tile, xoff, yoff, pal, flags {
     dw  tile
     dw  xoff
     dw  yoff
+    db  pal
     db  flags
 }
 
+macro actor name {
+    adr             x25, name
+}
+
+macro actor_pos ypos, xpos {
+    mov             w26, ypos
+    mov             w27, xpos
+    strh            w26, [x25, ACTOR_Y_POS]
+    strh            w27, [x25, ACTOR_X_POS]
+}
+
+macro actor_anim anim {
+    adr             x26, anim
+    str             w26, [x25, ACTOR_ANIM]
+    mov             w26, 0
+    strb            w26, [x25, ACTOR_FRAME_IDX]
+    str             w26, [x25, ACTOR_TIMER]
+}
+
+macro actor_flags flags {
+    mov             w26, flags
+    strb            w26, [x25, ACTOR_FLAGS]
+}
+
+macro actor_addx pixels, upper_bound {
+    local           .clamp
+    ldrh            w26, [x25, ACTOR_X_POS]
+    cmp             w26, upper_bound
+    b.hs            .clamp
+    add             w26, w26, pixels
+    strh            w26, [x25, ACTOR_X_POS]
+.clamp:    
+}
+
+macro actor_subx pixels, lower_bound {
+    local           .clamp
+    ldrh            w26, [x25, ACTOR_X_POS]
+    cmp             w26, lower_bound
+    b.ls            .clamp
+    sub             w26, w26, pixels
+    strh            w26, [x25, ACTOR_X_POS]
+.clamp:    
+}
+
+macro actor_addy pixels, upper_bound {
+    local           .clamp
+    ldrh            w26, [x25, ACTOR_Y_POS]
+    cmp             w26, upper_bound
+    b.hs            .clamp
+    add             w26, w26, pixels
+    strh            w26, [x25, ACTOR_Y_POS]
+.clamp:    
+}
+
+macro actor_suby pixels, lower_bound {
+    local           .clamp
+    ldrh            w26, [x25, ACTOR_Y_POS]
+    cmp             w26, lower_bound
+    b.ls            .clamp
+    sub             w26, w26, pixels
+    strh            w26, [x25, ACTOR_Y_POS]
+.clamp:    
+}
+
 macro spr number {
-    adr         x25, sprite_control
-    mov         w26, SPR_CON_SZ
-    mov         w27, number
-    madd        w25, w26, w27, w25
+    adr             x25, sprite_control
+    mov             w26, SPR_CON_SZ
+    mov             w27, number
+    madd            w25, w26, w27, w25
 }
 
 macro spr_pos ypos, xpos {
-    mov         w26, ypos
-    mov         w27, xpos
-    strh        w26, [x25, SPR_Y_POS]
-    strh        w27, [x25, SPR_X_POS]
+    mov             w26, ypos
+    mov             w27, xpos
+    strh            w26, [x25, SPR_Y_POS]
+    strh            w27, [x25, SPR_X_POS]
 }
 
 macro spr_addx pixels {
-    ldrh        w26, [x25, SPR_X_POS]
-    add         w26, w26, pixels
-    strh        w26, [x25, SPR_X_POS]
+    ldrh            w26, [x25, SPR_X_POS]
+    add             w26, w26, pixels
+    strh            w26, [x25, SPR_X_POS]
 }
 
 macro spr_subx pixels {
-    ldrh        w26, [x25, SPR_X_POS]
-    sub         w26, w26, pixels
-    strh        w26, [x25, SPR_X_POS]
+    ldrh            w26, [x25, SPR_X_POS]
+    sub             w26, w26, pixels
+    strh            w26, [x25, SPR_X_POS]
 }
 
 macro spr_addy pixels {
-    ldrh        w26, [x25, SPR_Y_POS]
-    add         w26, w26, pixels
-    strh        w26, [x25, SPR_Y_POS]
+    ldrh            w26, [x25, SPR_Y_POS]
+    add             w26, w26, pixels
+    strh            w26, [x25, SPR_Y_POS]
 }
 
 macro spr_suby pixels {
-    ldrh        w26, [x25, SPR_Y_POS]
-    sub         w26, w26, pixels
-    strh        w26, [x25, SPR_Y_POS]
+    ldrh            w26, [x25, SPR_Y_POS]
+    sub             w26, w26, pixels
+    strh            w26, [x25, SPR_Y_POS]
 }
 
 macro spr_tile tile {
-    mov         w26, tile
-    strh        w26, [x25, SPR_TILE]
+    mov             w26, tile
+    strh            w26, [x25, SPR_TILE]
 }
 
 macro spr_pal pal {
-    mov         w26, pal
-    strb        w26, [x25, SPR_PAL]
+    mov             w26, pal
+    strb            w26, [x25, SPR_PAL]
 }
 
 macro spr_flags flags {
-    mov         w26, flags
-    strb        w26, [x25, SPR_FLAGS]
+    mov             w26, flags
+    strb            w26, [x25, SPR_FLAGS]
 }
 
 macro spr_user1 data {
-    mov         w26, data
-    str         w26, [x25, SPR_USER1]
+    mov             w26, data
+    str             w26, [x25, SPR_USER1]
 }
 
 macro spr_user2 data {
-    mov         w26, data
-    str         w26, [x25, SPR_USER2]
+    mov             w26, data
+    str             w26, [x25, SPR_USER2]
 }
 
 align 4
 
 include     'util.s'
+
+; =========================================================
+;
+; actor_update
+;
+; stack:
+;   (none)
+;
+; registers:
+;   (none)
+;
+; =========================================================
+actor_update:
+    sub         sp, sp, #64
+    stp         x0, x30, [sp]
+    stp         x1, x2, [sp, #16]
+    stp         x3, x4, [sp, #32]
+    stp         x5, x6, [sp, #48]
+
+
+    ldp         x0, x30, [sp]
+    ldp         x1, x2, [sp, #16]
+    ldp         x3, x4, [sp, #32]
+    ldp         x5, x6, [sp, #48]
+    add         sp, sp, #64
+    ret
+
+macro actor_update {
+    bl          actor_update
+}
 
 ; =========================================================
 ;
@@ -691,7 +824,7 @@ macro fg_update page_addr {
 attract_enter_cb:
     sub         sp, sp, #16
     stp         x0, x30, [sp]
-
+    bg_set      title_bg, title_bg_attr
     ldp         x0, x30, [sp]
     add         sp, sp, #16
     ret
@@ -710,7 +843,10 @@ attract_enter_cb:
 attract_update_cb:
     sub         sp, sp, #16
     stp         x0, x30, [sp]
-
+    joy_check   JOY0_START
+    cbz         w26, .exit
+    state_go    GAME_STATE_ID
+.exit:    
     ldp         x0, x30, [sp]
     add         sp, sp, #16
     ret
@@ -746,11 +882,15 @@ attract_leave_cb:
 ;
 ; =========================================================
 game_enter_cb:
-    sub         sp, sp, #16
-    stp         x0, x30, [sp]
-
-    ldp         x0, x30, [sp]
-    add         sp, sp, #16
+    sub             sp, sp, #16
+    stp             x0, x30, [sp]
+    bg_set          playfield_bg, playfield_bg_attr
+    actor           mustache_man
+    actor_pos       256, 128
+    actor_anim      mustache_man_stand
+    actor_flags     F_ACTOR_VISIBLE
+    ldp             x0, x30, [sp]
+    add             sp, sp, #16
     ret
 
 ; =========================================================
@@ -765,11 +905,30 @@ game_enter_cb:
 ;
 ; =========================================================
 game_update_cb:
-    sub         sp, sp, #16
-    stp         x0, x30, [sp]
-
-    ldp         x0, x30, [sp]
-    add         sp, sp, #16
+    sub             sp, sp, #16
+    stp             x0, x30, [sp]
+    actor           mustache_man
+    joy_check       JOY0_LEFT
+    cbz             w26, .right    
+    actor_subx      2, 0    
+    actor_anim      mustache_man_walk_left
+    b               .update
+.right:    
+    joy_check       JOY0_RIGHT
+    cbz             w26, .select
+    actor_addx      2, SCREEN_WIDTH - SPRITE_WIDTH
+    actor_anim      mustache_man_walk_right
+    b               .update
+.select:    
+    joy_check       JOY0_SELECT
+    cbz             w26, .update
+    state_go        ATTRACT_STATE_ID
+    b               .exit
+.update:    
+    actor_update
+.exit:    
+    ldp             x0, x30, [sp]
+    add             sp, sp, #16
     ret
 
 ; =========================================================
@@ -786,7 +945,8 @@ game_update_cb:
 game_leave_cb:
     sub         sp, sp, #16
     stp         x0, x30, [sp]
-
+    actor       mustache_man
+    actor_flags F_ACTOR_NONE
     ldp         x0, x30, [sp]
     add         sp, sp, #16
     ret
@@ -865,23 +1025,29 @@ on_update:
     stp         x1, x2, [sp, #16]
     ploadb      x0, w0, next_state
     cbz         w0, .update
-    ; look up current_state if not NONE
-    ; call the leave
-    ;
-    ; set current_state to next_state
-    ; set next_state to NONE
-    ;
-    ; look up the current_state
-    ; call the enter
-    ;
-    ; bail
+    ploadb      x1, w1, current_state
+    cbz         w1, .no_current
+    state_load  w1
+    ldr         w2, [x26, STATE_LEAVE]
+    cbz         w2, .no_current
+    blr         x2
+.no_current:
+    pstoreb     x2, w0, current_state 
+    pstoreb     x2, w1, previous_state
+    mov         w1, NONE_STATE_ID
+    pstoreb     x2, w1, next_state
+    state_load  w0
+    ldr         w2, [x26, STATE_ENTER]
+    cbz         w2, .done
+    blr         x2
+    b           .done
 .update:    
     ploadb      x0, w0, current_state
-    lsl         w0, w0, 2
-    adr         x1, state_callbacks
-    add         w1, w1, w0
-    ldr         w0, [x1]
+    state_load  w0
+    ldr         w0, [x26, STATE_UPDATE]
+    cbz         w0, .done
     blr         x0
+.done:    
     ldp         x0, x30, [sp]
     ldp         x1, x2, [sp, #16]
     add         sp, sp, #32
@@ -941,22 +1107,28 @@ on_unload:
 ;
 ; =========================================================
 on_run:
-    sub         sp, sp, #16
+    sub         sp, sp, #32
     stp         x0, x30, [sp]
+    stp         x1, x2, [sp, #16]
+    adr         x0, player1
+    mov         w1, 3
+    strh        w1, [x0, PLAYER_LIVES]
+    mov         w1, 0
+    strh        w1, [x0, PLAYER_TREES]
+    str         w1, [x0, PLAYER_SCORE]
+    adr         x0, player2
+    mov         w1, 3
+    strh        w1, [x0, PLAYER_LIVES]
+    mov         w1, 0
+    strh        w1, [x0, PLAYER_TREES]
+    str         w1, [x0, PLAYER_SCORE]
+    mov         w1, NONE_STATE_ID
+    pstoreb     x0, w1, previous_state
+    pstoreb     x0, w1, current_state
     state_go    ATTRACT_STATE_ID
-    ;bg_set      title_bg, title_bg_attr
-
-    ;spr         0
-    ;spr_pos     256, 128
-    ;spr_flags   F_SPR_CHANGED or F_SPR_ENABLED
-    ;spr_tile    1
-    ;spr         1
-    ;spr_pos     288, 128
-    ;spr_tile    2
-    ;spr_flags   F_SPR_CHANGED or F_SPR_ENABLED
-
     ldp         x0, x30, [sp]
-    add         sp, sp, #16
+    ldp         x1, x2, [sp, #16]
+    add         sp, sp, #32
     ret
 
 ; =========================================================
@@ -1018,80 +1190,74 @@ previous_state: db  NONE_STATE_ID
 current_state:  db  NONE_STATE_ID
 next_state:     db  NONE_STATE_ID
 
+align 4
 state_callbacks:
-    statedef none_state,      0, 0, 0       
+    statedef none_state,      0,                  0,                    0       
     statedef attract_state,   attract_enter_cb,   attract_update_cb,    attract_leave_cb
     statedef game_state,      game_enter_cb,      game_update_cb,       game_leave_cb
     statedef game_over_state, game_over_enter_cb, game_over_update_cb,  game_over_leave_cb
 
-player1:
-    .lives      db  3
-    .score      dw  0
-
-player2:
-    .lives      db  3
-    .score      dw  0
-
 actors:
-    actordef bird1,        0,  0, 0, F_ACTOR_NONE
-    actordef bear1,        1,  0, 0, F_ACTOR_NONE
-    actordef swarm,        5,  0, 0, F_ACTOR_NONE
-    actordef whistle,      6,  0, 0, F_ACTOR_NONE
-    actordef beehive,      9,  0, 0, F_ACTOR_NONE
-    actordef foreman,      10, 0, 0, F_ACTOR_NONE
-    actordef other_guy,    14, 0, 0, F_ACTOR_NONE
-    actordef mustache_man, 18, 0, 0, F_ACTOR_NONE
+    actordef bird1,        0,  1, 0, 0, F_ACTOR_NONE
+    actordef bear1,        1,  4, 0, 0, F_ACTOR_NONE
+    actordef swarm,        5,  1, 0, 0, F_ACTOR_NONE
+    actordef whistle,      6,  3, 0, 0, F_ACTOR_NONE
+    actordef beehive,      9,  1, 0, 0, F_ACTOR_NONE
+    actordef foreman,      10, 4, 0, 0, F_ACTOR_NONE
+    actordef other_guy,    14, 4, 0, 0, F_ACTOR_NONE
+    actordef mustache_man, 18, 4, 0, 0, F_ACTOR_NONE
 trees:    
-    actordef tree0,        22, 0, 0, F_ACTOR_NONE
-    actordef tree2,        26, 0, 0, F_ACTOR_NONE
-    actordef tree3,        30, 0, 0, F_ACTOR_NONE
-    actordef tree4,        34, 0, 0, F_ACTOR_NONE
-    actordef tree5,        38, 0, 0, F_ACTOR_NONE
-    actordef tree6,        42, 0, 0, F_ACTOR_NONE
-    actordef tree7,        46, 0, 0, F_ACTOR_NONE
-    actordef tree8,        50, 0, 0, F_ACTOR_NONE
-    actordef tree9,        54, 0, 0, F_ACTOR_NONE
+    actordef tree0,        22, 4, 0, 0, F_ACTOR_NONE
+    actordef tree1,        26, 4, 0, 0, F_ACTOR_NONE
+    actordef tree2,        30, 4, 0, 0, F_ACTOR_NONE
+    actordef tree3,        34, 4, 0, 0, F_ACTOR_NONE
+    actordef tree4,        38, 4, 0, 0, F_ACTOR_NONE
+    actordef tree5,        42, 4, 0, 0, F_ACTOR_NONE
+    actordef tree6,        46, 4, 0, 0, F_ACTOR_NONE
+    actordef tree7,        50, 4, 0, 0, F_ACTOR_NONE
+    actordef tree8,        54, 4, 0, 0, F_ACTOR_NONE
+    actordef tree9,        58, 4, 0, 0, F_ACTOR_NONE
 
 animdef mustache_man_stand, 1, 0
 framestart 0, 2
-    frametile 1, 0,  0, F_SPR_NONE
-    frametile 2, 0, 32, F_SPR_NONE
+    frametile 1, 0,  0, PAL1, F_SPR_NONE
+    frametile 2, 0, 32, PAL1, F_SPR_NONE
 frameend
 
 animdef mustache_man_walk_right, 4, 40
 framestart 0, 2
-    frametile 6, 0,  0, F_SPR_NONE
-    frametile 7, 0, 32, F_SPR_NONE
+    frametile 6, 0,  0, PAL1, F_SPR_NONE
+    frametile 7, 0, 32, PAL1, F_SPR_NONE
 frameend
 framestart 1, 2
-    frametile 8, 0, 0, F_SPR_NONE
-    frametile 9, 0, 32, F_SPR_NONE
+    frametile 8, 0, 0, PAL1, F_SPR_NONE
+    frametile 9, 0, 32, PAL1, F_SPR_NONE
 frameend
 framestart 2, 2
-    frametile 10, 0, 0, F_SPR_NONE
-    frametile 11, 0, 32, F_SPR_NONE
+    frametile 10, 0, 0, PAL1, F_SPR_NONE
+    frametile 11, 0, 32, PAL1, F_SPR_NONE
 frameend
 framestart 3, 2
-    frametile 12, 0, 0, F_SPR_NONE
-    frametile 13, 0, 32, F_SPR_NONE
+    frametile 12, 0, 0, PAL1, F_SPR_NONE
+    frametile 13, 0, 32, PAL1, F_SPR_NONE
 frameend
 
 animdef mustache_man_walk_left, 4, 40
 framestart 0, 2
-    frametile 6, 0,  0, F_SPR_HFLIP
-    frametile 7, 0, 32, F_SPR_HFLIP
+    frametile 6, 0,  0, PAL1, F_SPR_HFLIP
+    frametile 7, 0, 32, PAL1, F_SPR_HFLIP
 frameend
 framestart 1, 2
-    frametile 8, 0, 0, F_SPR_HFLIP
-    frametile 9, 0, 32, F_SPR_HFLIP
+    frametile 8, 0, 0, PAL1, F_SPR_HFLIP
+    frametile 9, 0, 32, PAL1, F_SPR_HFLIP
 frameend
 framestart 2, 2
-    frametile 10, 0, 0, F_SPR_HFLIP
-    frametile 11, 0, 32, F_SPR_HFLIP
+    frametile 10, 0, 0, PAL1, F_SPR_HFLIP
+    frametile 11, 0, 32, PAL1, F_SPR_HFLIP
 frameend
 framestart 3, 2
-    frametile 12, 0, 0, F_SPR_HFLIP
-    frametile 13, 0, 32, F_SPR_HFLIP
+    frametile 12, 0, 0, PAL1, F_SPR_HFLIP
+    frametile 13, 0, 32, PAL1, F_SPR_HFLIP
 frameend
 
 animdef mustache_man_walk_up, 4, 40
@@ -1119,6 +1285,9 @@ animdef mustache_man_shaken, 4, 40
 animdef mustache_man_wave, 4, 40
 
 animdef mustache_man_in_a_tree, 4, 40
+
+playerdef player1
+playerdef player2
 
 ; =========================================================
 ;

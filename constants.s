@@ -40,6 +40,10 @@ SPRITE_WIDTH            = 32
 SPRITE_HEIGHT           = 32
 SPRITE_BYTES            = SPRITE_WIDTH * SPRITE_HEIGHT
 
+PAL1                    = 0
+PAL2                    = 1
+PAL3                    = 2
+PAL4                    = 3
 PALETTE_SIZE            = 16
 
 CHAR_ESC        = $1b
