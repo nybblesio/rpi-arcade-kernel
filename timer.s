@@ -62,6 +62,12 @@ label name
     dw  callback
 }
 
+macro timer_timeout addr*, duration {
+    adr         x25, addr
+    mov         w26, duration * 1600
+    str         w26, [x25, TIMER_DURATION]
+}
+
 macro timer_flags addr*, flags* {
     adr         x25, addr
     mov         w26, flags

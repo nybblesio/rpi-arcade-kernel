@@ -82,23 +82,39 @@ F_BG_VFLIP      = 00000100b
 
 ACTOR_Y_POS     = 0
 ACTOR_X_POS     = 2
-ACTOR_START_SPR = 3
-ACTOR_SPR_COUNT = 4
-ACTOR_FLAGS     = 5
-ACTOR_FRAME_IDX = 6
-ACTOR_RESERVED  = 7
-ACTOR_ANIM      = 8
-ACTOR_TIMER     = 12
-ACTOR_SZ        = 16
+ACTOR_SPR_START = 4
+ACTOR_SPR_COUNT = 5
+ACTOR_FLAGS     = 6
+ACTOR_FRAME_IDX = 7
+ACTOR_RESERVED  = 8
+ACTOR_ANIM      = 9
+ACTOR_TIMER     = 13
+ACTOR_SZ        = 17
 
 F_ACTOR_NONE      = 00000000b
 F_ACTOR_VISIBLE   = 00000001b
 F_ACTOR_COLLIDED  = 00000010b
+F_ACTOR_END       = 10000000b
 
 PLAYER_LIVES = 0
 PLAYER_TREES = 2
 PLAYER_SCORE = 4
 PLAYER_SZ    = 8
+
+ANIM_DEF_NUM_FRAMES = 0
+ANIM_DEF_NUM_MS     = 1
+ANIM_DEF_SZ         = 2
+
+FRAME_START_NUMBER     = 0
+FRAME_START_TILE_COUNT = 1
+FRAME_START_SZ         = 2
+
+FRAME_TILE_INDEX       = 0
+FRAME_TILE_X_OFFSET    = 4
+FRAME_TILE_Y_OFFSET    = 6
+FRAME_TILE_PALETTE     = 8
+FRAME_TILE_FLAGS       = 9
+FRAME_TILE_SZ          = 9
 
 ; =========================================================
 ;
@@ -158,7 +174,6 @@ macro state_go id {
 }
 
 macro actordef name*, spr_no*, spr_count*, xpos*, ypos*, flags* {
-align 4
 common
 label name
     dh  ypos
@@ -173,6 +188,7 @@ label name
 }
 
 macro animdef name*, num_frames*, num_ms* {
+align 4
 common
 label name
     db  num_frames
@@ -189,8 +205,8 @@ macro frameend {
 
 macro frametile tile, xoff, yoff, pal, flags {
     dw  tile
-    dw  xoff
-    dw  yoff
+    dh  xoff
+    dh  yoff
     db  pal
     db  flags
 }
@@ -325,6 +341,33 @@ macro spr_user2 data {
 align 4
 
 include     'util.s'
+include     'pool.s'
+include     'timer.s'
+
+; =========================================================
+;
+; timer_anim_callback
+;
+; stack:
+;   (none)
+;
+; registers:
+;   (none)
+;
+; =========================================================
+timer_anim_callback:
+    sub         sp, sp, #64
+    stp         x0, x30, [sp]
+    stp         x1, x2, [sp, #16]
+    stp         x3, x4, [sp, #32]
+    stp         x5, x6, [sp, #48]
+
+    ldp         x0, x30, [sp]
+    ldp         x1, x2, [sp, #16]
+    ldp         x3, x4, [sp, #32]
+    ldp         x5, x6, [sp, #48]
+    add         sp, sp, #64
+    ret
 
 ; =========================================================
 ;
@@ -338,18 +381,81 @@ include     'util.s'
 ;
 ; =========================================================
 actor_update:
-    sub         sp, sp, #64
+    sub         sp, sp, #96
     stp         x0, x30, [sp]
     stp         x1, x2, [sp, #16]
     stp         x3, x4, [sp, #32]
     stp         x5, x6, [sp, #48]
-
-
+    stp         x7, x8, [sp, #64]
+    stp         x9, x10, [sp, #80]
+    adr         x0, actors
+.loop:
+    ldrb        w1, [x0, ACTOR_FLAGS]
+    tst         w1, F_ACTOR_END
+    b.ne        .done
+    ldrb        w2, [x0, ACTOR_SPR_START]
+    ldrb        w3, [x0, ACTOR_SPR_COUNT]
+.reset_loop:
+    spr         w2
+    spr_flags   F_SPR_NONE
+    add         w2, w2, 1
+    subs        w3, w3, 1
+    b.ne        .reset_loop
+    tst         w1, F_ACTOR_VISIBLE
+    b.eq        .next
+.visible:    
+    ldr         w2, [x0, ACTOR_ANIM]
+    cbz         w2, .next
+    ;
+    ; need to handle the animation timer stuff
+    ;
+.layout:
+    add         w2, w2, ANIM_DEF_SZ
+    ldrb        w3, [x0, ACTOR_FRAME_IDX]
+    mov         w5, FRAME_TILE_SZ
+    mov         w6, FRAME_START_SZ
+.frame_skip:    
+    cbz         w3, .layout_frame
+    ldrb        w4, [x2, FRAME_START_TILE_COUNT]
+    madd        w4, w4, w5, w6
+    add         w2, w2, w4
+    sub         w3, w3, 1
+    b           .frame_skip
+.layout_frame:    
+    ldrb        w3, [x2, FRAME_START_TILE_COUNT]
+    add         w2, w2, FRAME_START_SZ
+    ldrb        w4, [x0, ACTOR_SPR_START]
+    ldrh        w5, [x0, ACTOR_Y_POS]
+    ldrh        w6, [x0, ACTOR_X_POS]
+.sprite:
+    spr         w4
+    ldrh        w7, [x2, FRAME_TILE_Y_OFFSET]
+    ldrh        w8, [x2, FRAME_TILE_X_OFFSET]
+    add         w7, w7, w5
+    add         w8, w8, w6
+    spr_pos     w7, w8
+    ldr         w7, [x2, FRAME_TILE_INDEX]
+    spr_tile    w7
+    ldrb        w7, [x2, FRAME_TILE_PALETTE]
+    spr_pal     w7
+    ldrb        w7, [x2, FRAME_TILE_FLAGS]
+    orr         w7, w7, F_SPR_ENABLED
+    orr         w7, w7, F_SPR_CHANGED
+    spr_flags   w7
+    add         w4, w4, 1
+    subs        w3, w3, 1
+    b.ne        .sprite
+.next:
+    add         w0, w0, ACTOR_SZ
+    b           .loop
+.done:
     ldp         x0, x30, [sp]
     ldp         x1, x2, [sp, #16]
     ldp         x3, x4, [sp, #32]
     ldp         x5, x6, [sp, #48]
-    add         sp, sp, #64
+    ldp         x7, x8, [sp, #64]
+    ldp         x9, x10, [sp, #80]
+    add         sp, sp, #96
     ret
 
 macro actor_update {
@@ -1186,6 +1292,8 @@ on_tick:
 ; Variables Data Section
 ;
 ; =========================================================
+timerdef timer_anim, 100, 0, timer_anim_callback
+
 previous_state: db  NONE_STATE_ID
 current_state:  db  NONE_STATE_ID
 next_state:     db  NONE_STATE_ID
@@ -1197,6 +1305,7 @@ state_callbacks:
     statedef game_state,      game_enter_cb,      game_update_cb,       game_leave_cb
     statedef game_over_state, game_over_enter_cb, game_over_update_cb,  game_over_leave_cb
 
+align 4
 actors:
     actordef bird1,        0,  1, 0, 0, F_ACTOR_NONE
     actordef bear1,        1,  4, 0, 0, F_ACTOR_NONE
@@ -1206,7 +1315,6 @@ actors:
     actordef foreman,      10, 4, 0, 0, F_ACTOR_NONE
     actordef other_guy,    14, 4, 0, 0, F_ACTOR_NONE
     actordef mustache_man, 18, 4, 0, 0, F_ACTOR_NONE
-trees:    
     actordef tree0,        22, 4, 0, 0, F_ACTOR_NONE
     actordef tree1,        26, 4, 0, 0, F_ACTOR_NONE
     actordef tree2,        30, 4, 0, 0, F_ACTOR_NONE
@@ -1217,6 +1325,7 @@ trees:
     actordef tree7,        50, 4, 0, 0, F_ACTOR_NONE
     actordef tree8,        54, 4, 0, 0, F_ACTOR_NONE
     actordef tree9,        58, 4, 0, 0, F_ACTOR_NONE
+    actordef end_of_list,  0,  0, 0, 0, F_ACTOR_END
 
 animdef mustache_man_stand, 1, 0
 framestart 0, 2

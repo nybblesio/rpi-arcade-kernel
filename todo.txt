@@ -24,10 +24,31 @@ TODO LIST
 
  Tasks
 -------
+- game: implmenet mustache man walk up/down/left/right
 
-- PERF: frame rate drops as the number of rendered lines increased on the console.
-        NOTE 1: inlining of draw_string didn't seem to help much
-        NOTE 2: use DMA?
+- game: implement mustache man chop left & right
+
+- game: implement mustache man fall forward and backwards
+
+- game: implement mustache man push on tree left & right
+
+- game: implement tree sporut, chop, and fall
+
+- fix h flip in bg_tile
+
+- implement dma for bg_buffer
+
+- implement h and v flip for sprites
+
+- add F_ACTOR_CHANGED flag and only update when set
+
+- animation timers implementation in actor_update
+
+- implement zmodem protocol
+
+- console: use a cached rendering approach like the game and DMA console_buffer to screen page buffer
+
+- switch to h/w flow control using FTDI cable
 
 - str_isprt: not using the stack, stomping w20
 
