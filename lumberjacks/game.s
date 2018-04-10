@@ -86,10 +86,13 @@ ACTOR_SPR_START = 4
 ACTOR_SPR_COUNT = 5
 ACTOR_FLAGS     = 6
 ACTOR_FRAME_IDX = 7
-ACTOR_RESERVED  = 8
-ACTOR_ANIM      = 9
-ACTOR_TIMER     = 13
-ACTOR_SZ        = 17
+ACTOR_ANIM      = 8
+ACTOR_TIMER     = 12
+ACTOR_USER1     = 16
+ACTOR_USER2     = 17
+ACTOR_USER3     = 18
+ACTOR_USER4     = 19
+ACTOR_SZ        = 20
 
 F_ACTOR_NONE      = 00000000b
 F_ACTOR_VISIBLE   = 00000001b
@@ -114,7 +117,7 @@ FRAME_TILE_X_OFFSET    = 4
 FRAME_TILE_Y_OFFSET    = 6
 FRAME_TILE_PALETTE     = 8
 FRAME_TILE_FLAGS       = 9
-FRAME_TILE_SZ          = 9
+FRAME_TILE_SZ          = 12
 
 ; =========================================================
 ;
@@ -180,11 +183,14 @@ label name
     dh  xpos
     db  spr_no
     db  spr_count
-    db  flags   ; flags
-    db  0       ; frame index
-    db  0       ; reserved
-    dw  0       ; animation ptr
-    dw  0       ; animation timer ptr
+    db  flags       
+    db  0           ; frame index
+    dw  0           ; animation ptr
+    dw  0           ; animation timer ptr
+    db  0           ; user data 
+    db  0           ; "
+    db  0           ; "
+    db  0           ; "
 }
 
 macro animdef name*, num_frames*, num_ms* {
@@ -209,6 +215,7 @@ macro frametile tile, xoff, yoff, pal, flags {
     dh  yoff
     db  pal
     db  flags
+    db  2 dup(0)    ; pad
 }
 
 macro actor name {
@@ -235,22 +242,35 @@ macro actor_flags flags {
     strb            w26, [x25, ACTOR_FLAGS]
 }
 
+macro actor_lduser1 reg {
+    ldrb            reg, [x25, ACTOR_USER1]
+}
+
+macro actor_stuser1 reg {
+    strb            reg, [x25, ACTOR_USER1]
+}
+
 macro actor_addx pixels, upper_bound {
     local           .clamp
     ldrh            w26, [x25, ACTOR_X_POS]
+    add             w26, w26, pixels
     cmp             w26, upper_bound
     b.hs            .clamp
-    add             w26, w26, pixels
     strh            w26, [x25, ACTOR_X_POS]
 .clamp:    
 }
 
+; XXX: need to clamp to lower_bound, not 0
 macro actor_subx pixels, lower_bound {
-    local           .clamp
+    local           .clamp, .ok
     ldrh            w26, [x25, ACTOR_X_POS]
-    cmp             w26, lower_bound
-    b.ls            .clamp
-    sub             w26, w26, pixels
+    cbz             w26, .clamp
+    mov             w27, pixels
+    cmp             w26, w27
+    b.hi            .ok
+    mov             w27, w26
+.ok:
+    sub             w26, w26, w27
     strh            w26, [x25, ACTOR_X_POS]
 .clamp:    
 }
@@ -258,19 +278,24 @@ macro actor_subx pixels, lower_bound {
 macro actor_addy pixels, upper_bound {
     local           .clamp
     ldrh            w26, [x25, ACTOR_Y_POS]
+    add             w26, w26, pixels
     cmp             w26, upper_bound
     b.hs            .clamp
-    add             w26, w26, pixels
     strh            w26, [x25, ACTOR_Y_POS]
 .clamp:    
 }
 
+; XXX: need to clamp to lower_bound, not 0
 macro actor_suby pixels, lower_bound {
-    local           .clamp
+    local           .clamp, .ok
     ldrh            w26, [x25, ACTOR_Y_POS]
-    cmp             w26, lower_bound
-    b.ls            .clamp
-    sub             w26, w26, pixels
+    cbz             w26, .clamp
+    mov             w27, pixels
+    cmp             w26, w27
+    b.hi            .ok
+    mov             w27, w26
+.ok:    
+    sub             w26, w26, w27
     strh            w26, [x25, ACTOR_Y_POS]
 .clamp:    
 }
@@ -361,13 +386,68 @@ timer_anim_callback:
     stp         x1, x2, [sp, #16]
     stp         x3, x4, [sp, #32]
     stp         x5, x6, [sp, #48]
-
+    adr         x0, actors
+.loop:    
+    ldrb        w1, [x0, ACTOR_FLAGS]
+    tst         w1, F_ACTOR_END
+    b.ne        .done
+    ldr         w1, [x0, ACTOR_ANIM]
+    cbz         w1, .next
+    ldrb        w2, [x1, ANIM_DEF_NUM_FRAMES]
+    ldrb        w3, [x0, ACTOR_FRAME_IDX]
+    cmp         w2, w3
+    b.eq        .reset_frame
+    add         w3, w3, 1
+    b           .save_frame
+.reset_frame:
+    mov         w3, 0
+.save_frame:
+    strb        w3, [x0, ACTOR_FRAME_IDX]    
+.next:    
+    add         w0, w0, ACTOR_SZ
+    b           .loop
+.done:    
+    timer_flags timer_anim, F_TIMER_ENABLED
     ldp         x0, x30, [sp]
     ldp         x1, x2, [sp, #16]
     ldp         x3, x4, [sp, #32]
     ldp         x5, x6, [sp, #48]
     add         sp, sp, #64
     ret
+    
+; =========================================================
+;
+; actor_reset
+;
+; stack:
+;   (none)
+;
+; registers:
+;   (none)
+;
+; =========================================================
+actor_reset:
+    sub         sp, sp, #32
+    stp         x0, x30, [sp]
+    stp         x1, x2, [sp, #16]
+    adr         x0, actors
+.loop:
+    ldrb        w1, [x0, ACTOR_FLAGS]
+    tst         w1, F_ACTOR_END
+    b.ne        .done
+    mov         w1, F_ACTOR_NONE
+    strb        w1, [x0, ACTOR_FLAGS]
+    add         x0, x0, ACTOR_SZ
+    b           .loop
+.done:    
+    ldp         x0, x30, [sp]
+    ldp         x1, x2, [sp, #16]
+    add         sp, sp, #32
+    ret
+
+macro actor_reset {
+    bl          actor_reset
+}
 
 ; =========================================================
 ;
@@ -406,9 +486,6 @@ actor_update:
 .visible:    
     ldr         w2, [x0, ACTOR_ANIM]
     cbz         w2, .next
-    ;
-    ; need to handle the animation timer stuff
-    ;
 .layout:
     add         w2, w2, ANIM_DEF_SZ
     ldrb        w3, [x0, ACTOR_FRAME_IDX]
@@ -443,6 +520,7 @@ actor_update:
     orr         w7, w7, F_SPR_CHANGED
     spr_flags   w7
     add         w4, w4, 1
+    add         w2, w2, FRAME_TILE_SZ
     subs        w3, w3, 1
     b.ne        .sprite
 .next:
@@ -598,36 +676,39 @@ bg_tile:
     mul         w3, w3, w4
     adr         x4, timber_bg
     add         w4, w4, w2    
-    tst         w1, F_BG_HFLIP
-    b.ne        .hflip
-    mov         w5, TILE_HEIGHT * TILE_WIDTH
-.noflip:
+    mov         w5, TILE_BYTES
+.pixel:
     ldrb        w7, [x4], 1
     add         w7, w7, w3
     strb        w7, [x0], 1
     subs        w5, w5, 1
-    b.ne        .noflip
-    b           .check_vflip
-.hflip:
-    mov         w6, TILE_HEIGHT
-.hflip_line:    
-    add         w4, w4, TILE_WIDTH
-    mov         w8, w4
-    mov         w5, TILE_WIDTH
-.hflip_pixel:
-    ldrb        w7, [x4]
-    add         w7, w7, w3
-    strb        w7, [x0], 1
+    b.ne        .pixel
+    tst         w1, F_BG_HFLIP
+    b.eq        .vflip
+    sub         w0, w0, TILE_BYTES
+    mov         w4, w0
+    add         w4, w4, TILE_WIDTH - 1
+    mov         w5, TILE_HEIGHT
+.hline:    
+    mov         w7, TILE_WIDTH / 2
+.hswap:
+    ldrb        w3, [x0]
+    ldrb        w8, [x4]
+    strb        w8, [x0]
+    strb        w3, [x4]
+    add         w0, w0, 1
     sub         w4, w4, 1
+    subs        w7, w7, 1
+    b.ne        .hswap
+    add         w0, w0, TILE_WIDTH / 2
+    mov         w4, w0
+    add         w4, w4, TILE_WIDTH - 1
     subs        w5, w5, 1
-    b.ne        .hflip_pixel
-    mov         w4, w8
-    subs        w6, w6, 1
-    b.ne        .hflip_line
-.check_vflip:
+    b.ne        .hline
+.vflip:
     tst         w1, F_BG_VFLIP
     b.eq        .exit
-.vflip:
+    ; TODO
 .exit:
     ldp         x0, x30, [sp]
     ldp         x1, x2, [sp, #16]
@@ -832,13 +913,40 @@ fg_tile:
     mul         w3, w3, w4
     adr         x4, timber_fg
     add         w4, w4, w2
-    mov         w2, SPRITE_HEIGHT * SPRITE_WIDTH
+    mov         w2, SPRITE_BYTES
 .pixel:
     ldrb        w6, [x4], 1
     add         w6, w6, w3
     strb        w6, [x0], 1
     subs        w2, w2, 1
     b.ne        .pixel
+    tst         w1, F_SPR_HFLIP
+    b.eq        .vflip
+    sub         w0, w0, SPRITE_BYTES
+    mov         w4, w0
+    add         w4, w4, SPRITE_WIDTH - 1
+    mov         w5, SPRITE_HEIGHT
+.hline:
+    mov         w7, SPRITE_WIDTH / 2
+.hswap:
+    ldrb        w3, [x0]
+    ldrb        w8, [x4]
+    strb        w8, [x0]
+    strb        w3, [x4]
+    add         w0, w0, 1
+    sub         w4, w4, 1
+    subs        w7, w7, 1
+    b.ne        .hswap
+    add         w0, w0, SPRITE_WIDTH / 2
+    mov         w4, w0
+    add         w4, w4, SPRITE_WIDTH - 1
+    subs        w5, w5, 1
+    b.ne        .hline
+.vflip:
+    tst         w1, F_SPR_VFLIP
+    b.eq        .exit
+    ; TODO
+.exit:
     ldp         x0, x30, [sp]
     ldp         x1, x2, [sp, #16]
     ldp         x3, x4, [sp, #32]
@@ -950,8 +1058,10 @@ attract_update_cb:
     sub         sp, sp, #16
     stp         x0, x30, [sp]
     joy_check   JOY0_START
-    cbz         w26, .exit
+    cbz         w26, .loop
     state_go    GAME_STATE_ID
+.loop:
+    actor_update
 .exit:    
     ldp         x0, x30, [sp]
     add         sp, sp, #16
@@ -993,7 +1103,7 @@ game_enter_cb:
     bg_set          playfield_bg, playfield_bg_attr
     actor           mustache_man
     actor_pos       256, 128
-    actor_anim      mustache_man_stand
+    actor_anim      mustache_man_stand_right
     actor_flags     F_ACTOR_VISIBLE
     ldp             x0, x30, [sp]
     add             sp, sp, #16
@@ -1011,30 +1121,45 @@ game_enter_cb:
 ;
 ; =========================================================
 game_update_cb:
-    sub             sp, sp, #16
+    sub             sp, sp, #32
     stp             x0, x30, [sp]
-    actor           mustache_man
+    stp             x1, x2, [sp, #16]
     joy_check       JOY0_LEFT
     cbz             w26, .right    
-    actor_subx      2, 0    
+    actor           mustache_man
+    actor_subx      8, SPRITE_WIDTH    
     actor_anim      mustache_man_walk_left
+    mov             w1, 1
+    actor_stuser1   w1
     b               .update
 .right:    
     joy_check       JOY0_RIGHT
     cbz             w26, .select
-    actor_addx      2, SCREEN_WIDTH - SPRITE_WIDTH
+    actor           mustache_man
+    actor_addx      8, SCREEN_WIDTH - SPRITE_WIDTH
     actor_anim      mustache_man_walk_right
+    mov             w1, 0
+    actor_stuser1   w1
     b               .update
 .select:    
     joy_check       JOY0_SELECT
-    cbz             w26, .update
+    cbz             w26, .stand
     state_go        ATTRACT_STATE_ID
     b               .exit
+.stand:
+    actor           mustache_man
+    actor_lduser1   w1
+    cbz             w1, .stand_right
+    actor_anim      mustache_man_stand_left
+    b               .update
+.stand_right:
+    actor_anim      mustache_man_stand_right
 .update:    
     actor_update
 .exit:    
     ldp             x0, x30, [sp]
-    add             sp, sp, #16
+    ldp             x1, x2, [sp, #16]
+    add             sp, sp, #32
     ret
 
 ; =========================================================
@@ -1178,6 +1303,7 @@ on_load:
     sub         sp, sp, #16
     stp         x0, x30, [sp]
     fg_reset   
+    timer_start timer_anim
     ldp         x0, x30, [sp]
     add         sp, sp, #16
     ret
@@ -1232,6 +1358,7 @@ on_run:
     pstoreb     x0, w1, previous_state
     pstoreb     x0, w1, current_state
     state_go    ATTRACT_STATE_ID
+    actor_reset
     ldp         x0, x30, [sp]
     ldp         x1, x2, [sp, #16]
     add         sp, sp, #32
@@ -1251,7 +1378,6 @@ on_run:
 on_stop:
     sub         sp, sp, #16
     stp         x0, x30, [sp]
-
     ldp         x0, x30, [sp]
     add         sp, sp, #16
     ret
@@ -1292,7 +1418,7 @@ on_tick:
 ; Variables Data Section
 ;
 ; =========================================================
-timerdef timer_anim, 100, 0, timer_anim_callback
+timerdef timer_anim, 100, 16, timer_anim_callback
 
 previous_state: db  NONE_STATE_ID
 current_state:  db  NONE_STATE_ID
@@ -1327,7 +1453,13 @@ actors:
     actordef tree9,        58, 4, 0, 0, F_ACTOR_NONE
     actordef end_of_list,  0,  0, 0, 0, F_ACTOR_END
 
-animdef mustache_man_stand, 1, 0
+animdef mustache_man_stand_left, 1, 0
+framestart 0, 2
+    frametile 1, 0,  0, PAL1, F_SPR_HFLIP
+    frametile 2, 0, 32, PAL1, F_SPR_HFLIP
+frameend
+
+animdef mustache_man_stand_right, 1, 0
 framestart 0, 2
     frametile 1, 0,  0, PAL1, F_SPR_NONE
     frametile 2, 0, 32, PAL1, F_SPR_NONE
