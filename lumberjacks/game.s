@@ -87,12 +87,13 @@ ACTOR_SPR_COUNT = 5
 ACTOR_FLAGS     = 6
 ACTOR_FRAME_IDX = 7
 ACTOR_ANIM      = 8
-ACTOR_TIMER     = 12
-ACTOR_USER1     = 16
-ACTOR_USER2     = 17
-ACTOR_USER3     = 18
-ACTOR_USER4     = 19
-ACTOR_SZ        = 20
+ACTOR_ANIM_RESET= 12
+ACTOR_TIMER     = 16
+ACTOR_USER1     = 20
+ACTOR_USER2     = 21
+ACTOR_USER3     = 22
+ACTOR_USER4     = 23
+ACTOR_SZ        = 24
 
 F_ACTOR_NONE      = 00000000b
 F_ACTOR_VISIBLE   = 00000001b
@@ -190,6 +191,7 @@ label name
     db  flags       
     db  0           ; frame index
     dw  0           ; animation ptr
+    dw  0           ; animation reset ptr
     dw  0           ; animation timer
     db  0           ; user data 
     db  0           ; "
@@ -237,23 +239,14 @@ macro actor_pos ypos, xpos {
     strh            w27, [x25, ACTOR_X_POS]
 }
 
-macro actor_anim anim {
-    local           .skip
-    adr             x26, anim
-    ldr             w27, [x25, ACTOR_ANIM]
-    cmp             w26, w27
-    b.eq            .skip
-    str             w26, [x25, ACTOR_ANIM]
-    ldrb            w27, [x26, ANIM_DEF_NUM_MS]
+macro actor_timer anim_reg, actor_reg {
     mov             w28, 1600
+    ldrb            w27, [anim_reg, ANIM_DEF_NUM_MS]
     mul             w27, w27, w28
     pload           x26, w26, arm_timer_counter
     ldr             w26, [x26]
     add             w26, w26, w27
-    str             w26, [x25, ACTOR_TIMER]
-    mov             w26, 0
-    strb            w26, [x25, ACTOR_FRAME_IDX]
-.skip:    
+    str             w26, [actor_reg, ACTOR_TIMER]
 }
 
 macro actor_flags flags {
@@ -392,6 +385,55 @@ include     'timer.s'
 
 ; =========================================================
 ;
+; actor_anim
+;
+; stack:
+;   (none)
+;
+; registers:
+;   (none)
+;
+; =========================================================
+actor_anim:
+    sub         sp, sp, #48
+    stp         x0, x30, [sp]
+    stp         x1, x2, [sp, #16]
+    stp         x3, x4, [sp, #32]
+    ldp         x0, x1, [sp, #48]
+    ldp         x2, x3, [sp, #64]
+    ldr         w4, [x0, ACTOR_ANIM_RESET]
+    cbnz        w4, .exit
+    ldr         w4, [x0, ACTOR_ANIM]
+    cmp         w4, w1
+    b.eq        .exit
+    str         w1, [x0, ACTOR_ANIM]
+    str         w2, [x0, ACTOR_ANIM_RESET]
+    actor_timer x1, x0
+    mov         w4, 0
+    strb        w4, [x0, ACTOR_FRAME_IDX]
+.exit:
+    ldp         x0, x30, [sp]
+    ldp         x1, x2, [sp, #16]
+    ldp         x3, x4, [sp, #32]
+    add         sp, sp, #80
+    ret
+
+macro actor_anim anim*, reset_anim {
+    sub         sp, sp, #32
+    adr         x26, anim
+    stp         x25, x26, [sp]
+    if reset_anim eq
+        mov     x26, 0
+    else
+        adr     x26, reset_anim
+    end if        
+    mov         x27, 0
+    stp         x26, x27, [sp, #16]
+    bl          actor_anim
+}
+    
+; =========================================================
+;
 ; actor_reset
 ;
 ; stack:
@@ -517,15 +559,13 @@ actor_update:
     b           .save_frame
 .reset_frame:
     mov         w3, 0
+    ldr         w4, [x0, ACTOR_ANIM_RESET]
+    cbz         w4, .save_frame
+    str         w4, [x0, ACTOR_ANIM]
+    str         w3, [x0, ACTOR_ANIM_RESET]
 .save_frame:
-    strb        w3, [x0, ACTOR_FRAME_IDX]    
-    ldrb        w3, [x2, ANIM_DEF_NUM_MS]
-    mov         w4, 1600
-    mul         w4, w4, w3
-    ldr         w3, [x9]
-    add         w3, w3, w4
-    str         w3, [x0, ACTOR_TIMER]
-
+    strb        w3, [x0, ACTOR_FRAME_IDX]
+    actor_timer x2, x0
 .next:
     add         w0, w0, ACTOR_SZ
     b           .loop
@@ -1162,7 +1202,7 @@ game_update_cb:
     joy_check       JOY0_A
     cbz             w26, .chop_left
     actor           mustache_man
-    actor_anim      mustache_man_chop_right
+    actor_anim      mustache_man_chop_right, mustache_man_stand_right
     mov             w1, 0
     actor_stuser1   w1
     b               .update
@@ -1170,7 +1210,7 @@ game_update_cb:
     joy_check       JOY0_Y
     cbz             w26, .select
     actor           mustache_man
-    actor_anim      mustache_man_chop_left
+    actor_anim      mustache_man_chop_left, mustache_man_stand_left
     mov             w1, 1
     actor_stuser1   w1
     b               .update
