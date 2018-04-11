@@ -56,7 +56,8 @@ JOY1_Y      = 22
 JOY1_B      = 23
 
 macro joy_check offset {
-    mov     x25, KERNEL_ABI_BOTTOM
-    ldrb    x26, [x25, offset]
+    mov     x26, KERNEL_ABI_BOTTOM
+    mov     w27, offset
+    add     w26, w26, w27
+    ldrb    w26, [x26]
 }
-
