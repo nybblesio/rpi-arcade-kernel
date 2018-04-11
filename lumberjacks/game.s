@@ -1854,10 +1854,10 @@ frameend
 
 animdef tree_grow, 8, 60
 framestart 0, 1
-    frametile 169, 0,  0, PAL1, F_SPR_NONE
+    frametile 169, 0, 0, PAL1, F_SPR_NONE
 frameend
 framestart 1, 1
-    frametile 170,  0, -32, PAL1, F_SPR_NONE
+    frametile 170, 0, 0, PAL1, F_SPR_NONE
 frameend
 framestart 2, 2
     frametile 171,  0, -32, PAL1, F_SPR_NONE
