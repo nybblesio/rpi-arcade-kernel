@@ -55,9 +55,16 @@ JOY1_SELECT = 21
 JOY1_Y      = 22
 JOY1_B      = 23
 
-macro joy_check offset {
-    mov     x26, KERNEL_ABI_BOTTOM
-    mov     w27, offset
-    add     w26, w26, w27
-    ldrb    w26, [x26]
-}
+WATCHES_BASE= 24
+
+WATCH_Y_POS = 0
+WATCH_X_POS = 2
+WATCH_FLAGS = 4
+WATCH_LEN   = 5
+WATCH_PAD2  = 6
+WATCH_PAD3  = 7
+WATCH_STR   = 8
+WATCH_SZ    = 12
+
+F_WATCH_NONE    = 00000000b
+F_WATCH_ENABLED = 00000001b

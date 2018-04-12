@@ -26,6 +26,85 @@
 
 ; =========================================================
 ;
+; Constants Section
+;
+; =========================================================
+RAND_MAX = 32767
+
+; =========================================================
+;
+; Variables Section
+;
+; =========================================================
+twister_seed1:
+    dw  8253729
+
+twister_seed2:
+    dw  2396403
+
+twister_seed:
+    dw  5331
+
+align 4
+
+; =========================================================
+;
+; rand
+;
+; stack:
+;   lower limit
+;   upper limit
+;
+; registers:
+;   (none)
+;
+; =========================================================
+; return min + rand() / (RAND_MAX / (max - min + 1) + 1);
+rand:
+    sub         sp, sp, #64
+    stp         x0, x30, [sp]
+    stp         x1, x2, [sp, #16]
+    stp         x3, x4, [sp, #32]
+    stp         x5, x6, [sp, #48]
+
+    pload       x0, w0, twister_seed
+    pload       x1, w1, twister_seed1
+    pload       x2, w2, twister_seed2
+    madd        x0, x0, x1, x2
+
+    mov         w1, RAND_MAX
+    udiv        x2, x0, x1
+    msub        x2, x2, x1, x0
+    pstore      x1, w0, twister_seed
+
+    ldp         x1, x2, [sp, #64]
+    add         w1, w1, 1
+    sub         w3, w2, w1
+    add         w3, w3, 1
+    mov         w4, RAND_MAX
+    udiv        w4, w4, w3
+
+    udiv        w4, w0, w4
+    add         w4, w4, w1
+    mov         w26, w4
+
+    ldp         x0, x30, [sp]
+    ldp         x1, x2, [sp, #16]
+    ldp         x3, x4, [sp, #32]
+    ldp         x5, x6, [sp, #48]
+    add         sp, sp, #80
+    ret
+
+macro rand lower_limit*, upper_limit* {
+    sub         sp, sp, #16
+    mov         w26, lower_limit
+    mov         w27, upper_limit
+    stp         x26, x27, [sp]
+    bl          rand
+}
+
+; =========================================================
+;
 ; mem_copy64
 ;
 ; stack:

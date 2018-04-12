@@ -206,6 +206,45 @@ align 4
 
 ; =========================================================
 ;
+; watches_draw
+;
+; stack:
+;   (none)
+;   
+; registers:
+;   (none)
+;
+; =========================================================
+watches_draw:
+    sub         sp, sp, #64
+    stp         x0, x30, [sp]
+    stp         x1, x2, [sp, #16]
+    stp         x3, x4, [sp, #32]
+    stp         x5, x6, [sp, #48]
+    adr         x1, watches
+    mov         w2, 32
+.loop:
+    ldrb        w3, [x1, WATCH_FLAGS]
+    tst         w3, F_WATCH_ENABLED
+    b.eq        .skip
+    ldrh        w3, [x1, WATCH_Y_POS]
+    ldrh        w4, [x1, WATCH_X_POS]
+    ldrb        w5, [x1, WATCH_LEN]
+    ldr         w6, [x1, WATCH_STR]
+    string      w3, w4, w6, w5, $0f
+.skip:
+    add         w1, w1, WATCH_SZ
+    subs        w2, w2, 1
+    b.ne        .loop
+    ldp         x0, x30, [sp]
+    ldp         x1, x2, [sp, #16]
+    ldp         x3, x4, [sp, #32]
+    ldp         x5, x6, [sp, #48]
+    add         sp, sp, #64
+    ret
+
+; =========================================================
+;
 ; caret_draw
 ;
 ; stack:
@@ -474,7 +513,7 @@ console_draw:
 .draw:
     sub         w12, w11, w5
     cbz         w14, .no_draw
-    string      x2, x3, x5, x12, x6 
+    string      w2, w3, w5, w12, w6 
 .no_draw:    
     mov         w6, w10
     madd        w3, w12, w13, w3

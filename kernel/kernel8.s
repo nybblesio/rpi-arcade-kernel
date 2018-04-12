@@ -118,6 +118,7 @@ kernel_core:
     bl          caret_draw
     
 .skip:    
+    bl          watches_draw
     bl          page_swap
     b           .loop
 
@@ -191,7 +192,7 @@ joy1_state: dw 0
 
 org KERNEL_ABI_BOTTOM
 
-include 'kernel_abi.s'
+include 'kernel_abi_constants.s'
 
 joy0_r:     db 0
 joy0_l:     db 0
@@ -218,6 +219,17 @@ joy1_start: db 0
 joy1_select:db 0
 joy1_y:     db 0
 joy1_b:     db 0
+
+watches:
+rept 32 {
+    dh  0 ;ypos
+    dh  0 ;xpos
+    db  0 ;flags
+    db  0 ;len
+    db  0 ;pad
+    db  0 ;pad
+    dw  0 ;str ptr
+}
 
 org KERNEL_ABI_TOP
 

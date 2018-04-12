@@ -111,9 +111,7 @@ PLAYER_SCORE = 4
 PLAYER_SZ    = 8
 
 ANIM_DEF_NUM_FRAMES = 0
-ANIM_DEF_NUM_MS     = 1
-ANIM_DEF_PAD1       = 2
-ANIM_DEF_PAD2       = 3
+ANIM_DEF_NUM_MS     = 2
 ANIM_DEF_SZ         = 4
 
 FRAME_START_NUMBER     = 0
@@ -143,7 +141,7 @@ F_PLAYER_PUSH   = 00100000b
 ;
 ; =========================================================
 include     'macros.s'
-include     'kernel_abi.s'
+include     'kernel_abi_constants.s'
 include     'constants.s'
 
 org GAME_BOTTOM
@@ -233,10 +231,8 @@ macro animdef name*, num_frames*, num_ms* {
 align 4
 common
 label name
-    db  num_frames
-    db  num_ms
-    db  0
-    db  0
+    dh  num_frames
+    dh  num_ms
 }
 
 macro framestart num, num_tiles {
@@ -271,7 +267,7 @@ macro actor_pos ypos, xpos {
 
 macro actor_timer anim_reg, actor_reg {
     mov             w28, 1600
-    ldrb            w27, [anim_reg, ANIM_DEF_NUM_MS]
+    ldrh            w27, [anim_reg, ANIM_DEF_NUM_MS]
     mul             w27, w27, w28
     pload           x26, w26, arm_timer_counter
     ldr             w26, [x26]
@@ -411,7 +407,8 @@ align 4
 
 include     'util.s'
 include     'pool.s'
-include     'timer.s'
+include     'string.s'
+include     'kernel_abi_macros.s'
 
 ; =========================================================
 ;
@@ -534,7 +531,7 @@ actor_update:
 .visible:    
     ldr         w2, [x0, ACTOR_ANIM]
     cbz         w2, .next
-    ldrb        w3, [x2, ANIM_DEF_NUM_FRAMES]
+    ldrh        w3, [x2, ANIM_DEF_NUM_FRAMES]
     add         w2, w2, ANIM_DEF_SZ
     ldrb        w4, [x0, ACTOR_FRAME_IDX]
 .frame:
@@ -580,7 +577,7 @@ actor_update:
     cmp         w4, w2
     b.lo        .next
     ldr         w2, [x0, ACTOR_ANIM]
-    ldrb        w4, [x2, ANIM_DEF_NUM_FRAMES]
+    ldrh        w4, [x2, ANIM_DEF_NUM_FRAMES]
     ldrb        w3, [x0, ACTOR_FRAME_IDX]
     sub         w4, w4, 1
     cmp         w3, w4
@@ -1198,8 +1195,9 @@ tree_grow_cb:
 ;
 ; =========================================================
 game_enter_cb:
-    sub             sp, sp, #16
+    sub             sp, sp, #32
     stp             x0, x30, [sp]
+    stp             x1, x2, [sp, #16]
     bg_set          playfield_bg, playfield_bg_attr
 
     actor           mustache_man
@@ -1217,13 +1215,18 @@ game_enter_cb:
     actor_anim      foreman_watching
     actor_flags     F_ACTOR_VISIBLE
 
+    rand            220, 400
+    mov             w0, w26
+    watch_set       0, 400, 32, w0, "rand (w0) = "
+
     actor           tree0
     actor_pos       256, 256
     actor_anim      tree_grow, tree_grow_cb
     actor_flags     F_ACTOR_VISIBLE
 
     ldp             x0, x30, [sp]
-    add             sp, sp, #16
+    ldp             x1, x2, [sp, #16]
+    add             sp, sp, #32
     ret
 
 ; =========================================================
@@ -1418,6 +1421,7 @@ game_leave_cb:
     stp         x0, x30, [sp]
     actor       mustache_man
     actor_flags F_ACTOR_NONE
+    watch_clr   0
     ldp         x0, x30, [sp]
     add         sp, sp, #16
     ret
@@ -1835,7 +1839,7 @@ framestart 1, 2
     frametile 125, 0, 32, PAL1, F_SPR_NONE
 frameend
 
-animdef foreman_watching, 2, 255
+animdef foreman_watching, 2, 325
 framestart 0, 2
     frametile 130, 0,  0, PAL1, F_SPR_NONE
     frametile 132, 0, 32, PAL1, F_SPR_NONE

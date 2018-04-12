@@ -7,7 +7,7 @@ clean:
 	rm lumberjacks/game.hex
 
 DEPS=command.s console.s constants.s dma.s font.s \
-	interrupt.s joy.s kernel_abi.s macros.s mailbox.s \
+	interrupt.s joy.s kernel_abi_constants.s kernel_abi_macros.s macros.s mailbox.s \
 	pool.s string.s terminal.s timer.s uart.s util.s video.s
 
 kernel/kernel8.img: kernel/kernel8.s $(DEPS)

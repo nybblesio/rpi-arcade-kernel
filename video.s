@@ -38,14 +38,14 @@ macro page_ld {
 
 macro string ypos, xpos, str, len, color {
     sub         sp, sp, #48
-    mov         x20, ypos
-    mov         x21, xpos
+    mov         w20, ypos
+    mov         w21, xpos
     stp         x20, x21, [sp]
-    mov         x20, str
-    mov         x21, len
+    mov         w20, str
+    mov         w21, len
     stp         x20, x21, [sp, #16]
-    mov         x20, color
-    mov         x21, 0
+    mov         w20, color
+    mov         w21, 0
     stp         x20, x21, [sp, #32]
     bl          draw_string
 }
