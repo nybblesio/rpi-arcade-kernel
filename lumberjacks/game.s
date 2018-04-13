@@ -87,20 +87,23 @@ F_BG_CHANGED    = 00000001b
 F_BG_HFLIP      = 00000010b
 F_BG_VFLIP      = 00000100b
 
-ACTOR_Y_POS     = 0
-ACTOR_X_POS     = 2
-ACTOR_SPR_START = 4
-ACTOR_SPR_COUNT = 5
-ACTOR_FLAGS     = 6
-ACTOR_FRAME_IDX = 7
-ACTOR_ANIM      = 8
-ACTOR_ANIM_FUNC = 12
-ACTOR_TIMER     = 16
-ACTOR_USER1     = 20
-ACTOR_USER2     = 21
-ACTOR_USER3     = 22
-ACTOR_USER4     = 23
-ACTOR_SZ        = 24
+ACTOR_Y_POS         = 0
+ACTOR_X_POS         = 2
+ACTOR_SPR_START     = 4
+ACTOR_SPR_COUNT     = 5
+ACTOR_FLAGS         = 6
+ACTOR_FRAME_IDX     = 7
+ACTOR_ANIM          = 8
+ACTOR_ANIM_FUNC     = 12
+ACTOR_ANIM_TIMER    = 16
+ACTOR_UPD_FUNC      = 20
+ACTOR_UPD_TIMER     = 24
+ACTOR_UPD_MS        = 28
+ACTOR_USER1         = 32
+ACTOR_USER2         = 33
+ACTOR_USER3         = 34
+ACTOR_USER4         = 35
+ACTOR_SZ            = 36
 
 F_ACTOR_NONE      = 00000000b
 F_ACTOR_VISIBLE   = 00000001b
@@ -137,6 +140,18 @@ F_PLAYER_FALL   = 00001000b
 F_PLAYER_CRASH  = 00010000b
 F_PLAYER_PUSH   = 00100000b
 
+F_TREE_NONE     = 00000000b
+F_TREE_HAS_BIRD = 00000001b
+F_TREE_FALLEN   = 00000010b
+F_TREE_KILL_FALL= 00000100b
+F_TREE_SAFE_FALL= 00001000b
+
+F_BIRD_NONE     = 00000000b
+F_BIRD_LEFT     = 00000001b
+F_BIRD_RIGHT    = 00000010b
+F_BIRD_UP       = 00000100b
+F_BIRD_DOWN     = 00001000b
+
 ; =========================================================
 ;
 ; Game Entry Point
@@ -164,23 +179,6 @@ revision:   db 2
 ; Macros Section
 ;
 ; =========================================================
-macro p1_setf flag* {
-    actor_lduser1   w26
-    mov             w27, flag
-    orr             w26, w26, w27
-    actor_stuser1   w26
-}
-
-macro p1_clrf flag* {
-    actor_lduser1   w26
-    bic             w26, w26, flag
-    actor_stuser1   w26
-}
-
-macro p1_ldf reg* {
-    actor_lduser1   reg  
-}
-
 macro playerdef name {
 align 4
 common
@@ -223,6 +221,9 @@ label name
     dw  0           ; animation ptr
     dw  0           ; animation reset func ptr
     dw  0           ; animation timer
+    dw  0           ; update func ptr
+    dw  0           ; update timer
+    dw  0           ; update timer duration
     db  0           ; user data 
     db  0           ; "
     db  0           ; "
@@ -260,6 +261,38 @@ macro actor name {
     adr             x25, name
 }
 
+macro actorr reg {
+    mov             w25, reg
+}
+
+macro actor_setf flag* {
+    mov             w26, flag
+    actor_stuser1   w26
+}
+
+macro actor_orrf flag* {
+    actor_lduser1   w26
+    mov             w27, flag
+    orr             w26, w26, w27
+    actor_stuser1   w26
+}
+
+macro actor_clrf flag* {
+    actor_lduser1   w26
+    mov             w27, flag
+    bic             w26, w26, w27
+    actor_stuser1   w26
+}
+
+macro actor_ldf reg* {
+    actor_lduser1   reg  
+}
+
+macro actor_upd func* {
+    adr             x26, func
+    str             w26, [x25, ACTOR_UPD_FUNC]
+}
+
 macro actor_pos ypos, xpos {
     mov             w26, ypos
     mov             w27, xpos
@@ -267,14 +300,25 @@ macro actor_pos ypos, xpos {
     strh            w27, [x25, ACTOR_X_POS]
 }
 
-macro actor_timer anim_reg, actor_reg {
+macro actor_animt anim_reg, actor_reg {
     mov             w28, 1600
     ldrh            w27, [anim_reg, ANIM_DEF_NUM_MS]
     mul             w27, w27, w28
     pload           x26, w26, arm_timer_counter
     ldr             w26, [x26]
     add             w26, w26, w27
-    str             w26, [actor_reg, ACTOR_TIMER]
+    str             w26, [actor_reg, ACTOR_ANIM_TIMER]
+}
+
+macro actor_updt duration* {
+    mov             w26, duration
+    str             w26, [x25, ACTOR_UPD_MS]
+    mov             w27, 1600
+    mul             w27, w26, w27
+    pload           x26, w26, arm_timer_counter
+    ldr             w26, [x26]
+    add             w26, w26, w27
+    str             w26, [x25, ACTOR_UPD_TIMER]
 }
 
 macro actor_flags flags {
@@ -495,7 +539,7 @@ actor_anim:
     b.eq        .exit
     str         w1, [x0, ACTOR_ANIM]
     str         w2, [x0, ACTOR_ANIM_FUNC]
-    actor_timer x1, x0
+    actor_animt x1, x0
     mov         w4, 0
     strb        w4, [x0, ACTOR_FRAME_IDX]
 .exit:
@@ -539,6 +583,13 @@ actor_reset:
     ldrb        w1, [x0, ACTOR_FLAGS]
     tst         w1, F_ACTOR_END
     b.ne        .done
+    mov         w1, 0
+    strh        w1, [x0, ACTOR_Y_POS]
+    strh        w1, [x0, ACTOR_X_POS]
+    str         w1, [x0, ACTOR_ANIM]
+    str         w1, [x0, ACTOR_ANIM_TIMER]
+    str         w1, [x0, ACTOR_ANIM_FUNC]
+    strb        w1, [x0, ACTOR_FRAME_IDX]
     mov         w1, F_ACTOR_NONE
     strb        w1, [x0, ACTOR_FLAGS]
     add         x0, x0, ACTOR_SZ
@@ -578,6 +629,20 @@ actor_update:
     ldrb        w1, [x0, ACTOR_FLAGS]
     tst         w1, F_ACTOR_END
     b.ne        .done
+    ldr         w2, [x0, ACTOR_UPD_TIMER]
+    cbz         w2, .always_upd
+    ldr         w3, [x9]
+    cmp         w2, w3
+    b.lo        .no_upd
+    ldr         w4, [x0, ACTOR_UPD_MS]
+    mov         w5, 1600
+    madd        w3, w4, w5, w3
+    str         w3, [x0, ACTOR_UPD_TIMER]
+.always_upd:    
+    ldr         w2, [x0, ACTOR_UPD_FUNC]
+    cbz         w2, .no_upd
+    blr         x2
+.no_upd:    
     ldrb        w2, [x0, ACTOR_SPR_START]
     ldrb        w3, [x0, ACTOR_SPR_COUNT]
 .reset_loop:
@@ -633,7 +698,7 @@ actor_update:
     b.ne        .sprite
 
     ldr         w4, [x9]
-    ldr         w2, [x0, ACTOR_TIMER]
+    ldr         w2, [x0, ACTOR_ANIM_TIMER]
     cmp         w4, w2
     b.lo        .next
     ldr         w2, [x0, ACTOR_ANIM]
@@ -655,7 +720,7 @@ actor_update:
     str         w3, [x0, ACTOR_ANIM_FUNC]
 .save_frame:
     strb        w3, [x0, ACTOR_FRAME_IDX]
-    actor_timer x2, x0
+    actor_animt x2, x0
 .next:
     add         w0, w0, ACTOR_SZ
     b           .loop
@@ -1222,6 +1287,39 @@ attract_leave_cb:
 
 ; =========================================================
 ;
+; bird_hint_cb
+;
+; stack:
+;   (none)
+;   
+; registers:
+;   (none)
+;
+; =========================================================
+bird_hint_cb:
+    sub             sp, sp, #32
+    stp             x0, x30, [sp]
+    stp             x1, x2, [sp, #16]
+    ldp             x0, x1, [sp, #32]
+    adr             x2, bird_right
+    str             w2, [x0, ACTOR_ANIM]
+    mov             w2, F_BIRD_RIGHT
+    strb            w2, [x0, ACTOR_USER1]
+    adr             x2, bird_update_cb
+    str             w2, [x0, ACTOR_UPD_FUNC]
+    ldrh            w2, [x0, ACTOR_Y_POS]
+    add             w2, w2, 64
+    strh            w2, [x0, ACTOR_Y_POS]
+    ldrh            w2, [x0, ACTOR_X_POS]
+    add             w2, w2, 32
+    strh            w2, [x0, ACTOR_X_POS]
+    ldp             x0, x30, [sp]
+    ldp             x1, x2, [sp, #16]
+    add             sp, sp, #32
+    ret
+
+; =========================================================
+;
 ; tree_grow_cb
 ;
 ; stack:
@@ -1238,10 +1336,68 @@ tree_grow_cb:
     ldp             x0, x1, [sp, #32]
     adr             x1, tree_stand
     str             w1, [x0, ACTOR_ANIM]
+    rand            10, 4096
+    mov             w1, w26
+    and             w1,   w1, 00000111b
+    rand            10, 4096
+    and             w26, w26, 00000111b
+    cmp             w1, w26
+    b.ne            .done
+.bird:
+    ldrb            w1, [x0, ACTOR_USER1]
+    orr             w1, w1, F_TREE_HAS_BIRD
+    strb            w1, [x0, ACTOR_USER1]
+    ldrh            w1, [x0, ACTOR_Y_POS]
+    ldrh            w2, [x0, ACTOR_X_POS]
+    actor           bird1
+    sub             w1, w1, 64
+    actor_pos       w1, w2
+    actor_anim      bird_hint, bird_hint_cb
+    actor_flags     F_ACTOR_VISIBLE
+.done:    
     ldp             x0, x30, [sp]
     ldp             x1, x2, [sp, #16]
     add             sp, sp, #32
     ret
+
+; =========================================================
+;
+; tree_spawn
+;
+; stack:
+;   (none)
+;   
+; registers:
+;   (none)
+;
+; =========================================================
+tree_spawn:
+    sub             sp, sp, #32
+    stp             x0, x30, [sp]
+    stp             x1, x2, [sp, #16]
+    adr             x2, tree9
+    pload           x1, w1, current_tree
+    cmp             w1, w2
+    b.eq            .done
+    actorr          w1
+    add             w1, w1, ACTOR_SZ
+    pstore          x2, w1, current_tree
+    rand            220, 400
+    mov             w1, w26
+    rand            64, 448
+    mov             w2, w26
+    actor_pos       w1, w2
+    actor_anim      tree_grow, tree_grow_cb
+    actor_flags     F_ACTOR_VISIBLE
+.done:    
+    ldp             x0, x30, [sp]
+    ldp             x1, x2, [sp, #16]
+    add             sp, sp, #32
+    ret
+
+macro tree_spawn {
+    bl              tree_spawn
+}
 
 ; =========================================================
 ;
@@ -1262,6 +1418,7 @@ game_enter_cb:
 
     actor           mustache_man
     actor_pos       256, 128
+    actor_upd       p1_update_cb
     actor_anim      mustache_man_stand_right
     actor_flags     F_ACTOR_VISIBLE
 
@@ -1275,15 +1432,11 @@ game_enter_cb:
     actor_anim      foreman_watching
     actor_flags     F_ACTOR_VISIBLE
 
-    rand            220, 400
-    mov             w1, w26
-    rand            64, 448
-    mov             w2, w26
+    adr             x1, tree0
+    pstore          x2, w1, current_tree
 
-    actor           tree0
-    actor_pos       w1, w2
-    actor_anim      tree_grow, tree_grow_cb
-    actor_flags     F_ACTOR_VISIBLE
+    tree_spawn
+    tree_spawn
 
     ldp             x0, x30, [sp]
     ldp             x1, x2, [sp, #16]
@@ -1307,7 +1460,7 @@ p1_chop_cb:
     stp             x1, x2, [sp, #16]
     ldp             x0, x1, [sp, #32]
     mov             x25, x0
-    p1_ldf          w1
+    actor_ldf       w1
     tst             w1, F_PLAYER_RIGHT
     b.ne            .right
     mov             w1, BUTTON_TOGGLE_RESET
@@ -1320,7 +1473,7 @@ p1_chop_cb:
     adr             x1, mustache_man_stand_right
 .flags:
     str             w1, [x0, ACTOR_ANIM]
-    p1_clrf         F_PLAYER_CHOP
+    actor_clrf      F_PLAYER_CHOP
     ldp             x0, x30, [sp]
     ldp             x1, x2, [sp, #16]
     add             sp, sp, #32
@@ -1376,6 +1529,162 @@ macro button_toggle joy*, var* {
 
 ; =========================================================
 ;
+; bird_update_cb
+;
+; stack:
+;   (none)
+;   
+; registers:
+;   (none)
+;
+; =========================================================
+bird_update_cb:
+    sub             sp, sp, #32
+    stp             x0, x30, [sp]
+    stp             x1, x2, [sp, #16]
+    rand            10, 4096
+    mov             w1, w26
+    and             w1, w1, 00000111b
+    and             w26, w26, 00111000b
+    cmp             w1, w26
+    b.ne            .done
+    rand            10, 4096
+    tbz             w26, 1, .right
+    tbz             w26, 2, .left
+    tbz             w26, 3, .up
+    tbz             w26, 4, .down
+    b               .done    
+.right:
+    actor           bird1
+    actor_setf      F_BIRD_RIGHT
+    actor_anim      bird_right
+    b               .done
+.left:
+    actor           bird1
+    actor_setf      F_BIRD_LEFT
+    actor_anim      bird_left
+    b               .done
+.up:
+    actor           bird1
+    actor_setf      F_BIRD_UP
+    actor_anim      bird_up
+    b               .done
+.down:
+    actor           bird1
+    actor_setf      F_BIRD_DOWN
+    actor_anim      bird_down
+.done:    
+    actor           bird1
+    actor_ldf       w1
+    tbnz            w1, 1, .move_right
+    tbnz            w1, 0, .move_left
+    tbnz            w1, 2, .move_up
+    tbnz            w1, 3, .move_down
+    b               .exit
+.move_right:
+    actor           bird1
+    actor_addx      3, SCREEN_WIDTH - SPRITE_WIDTH
+    b               .exit
+.move_left:
+    actor           bird1
+    actor_subx      3, SPRITE_WIDTH
+    b               .exit
+.move_up:
+    actor           bird1
+    actor_suby      3, 200
+    b               .exit
+.move_down:
+    actor           bird1
+    actor_addy      3, SCREEN_HEIGHT - SPRITE_HEIGHT
+.exit:    
+    ldp             x0, x30, [sp]
+    ldp             x1, x2, [sp, #16]
+    add             sp, sp, #32
+    ret
+
+; =========================================================
+;
+; p1_update_cb
+;
+; stack:
+;   (none)
+;   
+; registers:
+;   (none)
+;
+; =========================================================
+p1_update_cb:
+    sub             sp, sp, #32
+    stp             x0, x30, [sp]
+    stp             x1, x2, [sp, #16]
+    joy_check       JOY0_LEFT
+    cbz             w26, .right    
+    actor           mustache_man
+    actor_subx      4, 2  
+    actor_anim      mustache_man_walk_left
+    actor_setf      F_PLAYER_LEFT
+    b               .done
+.right:    
+    joy_check       JOY0_RIGHT
+    cbz             w26, .up
+    actor           mustache_man
+    actor_addx      4, SCREEN_WIDTH - SPRITE_WIDTH
+    actor_anim      mustache_man_walk_right
+    actor_setf      F_PLAYER_RIGHT
+    b               .done
+.up:
+    joy_check       JOY0_UP
+    cbz             w26, .down
+    actor           mustache_man
+    actor_suby      4, 128
+    actor_anim      mustache_man_walk_up
+    b               .done
+.down:
+    joy_check       JOY0_DOWN
+    cbz             w26, .check_chop
+    actor           mustache_man
+    actor_addy      4, 400
+    actor_anim      mustache_man_walk_down
+    b               .done
+.check_chop:
+    actor_ldf       w1
+    tst             w1, F_PLAYER_CHOP
+    b.ne            .stand
+.chop_right:
+    button_toggle   JOY0_A, button_a_toggle
+    ploadb          x1, w1, button_a_toggle
+    cmp             w1, BUTTON_TOGGLE_STOP
+    b.ne            .chop_left
+    actor           mustache_man
+    actor_anim      mustache_man_chop_right, p1_chop_cb
+    actor_setf      F_PLAYER_RIGHT or F_PLAYER_CHOP
+    b               .done
+.chop_left:
+    button_toggle   JOY0_Y, button_y_toggle
+    ploadb          x1, w1, button_y_toggle
+    cmp             w1, BUTTON_TOGGLE_STOP
+    b.ne            .stand
+    actor           mustache_man
+    actor_anim      mustache_man_chop_left, p1_chop_cb
+    actor_setf      F_PLAYER_LEFT or F_PLAYER_CHOP
+    b               .done
+.stand:
+    actor           mustache_man
+    actor_ldf       w1
+    tst             w1, F_PLAYER_RIGHT
+    b.ne            .stand_right
+    actor_anim      mustache_man_stand_left
+    b               .done
+.stand_right:
+    actor_anim      mustache_man_stand_right
+.done:
+    ldp             x0, x30, [sp]
+    ldp             x1, x2, [sp, #16]
+    add             sp, sp, #32
+    ret
+
+; =========================================================
+;
 ; game_update_cb
 ;
 ; stack:
@@ -1389,78 +1698,13 @@ game_update_cb:
     sub             sp, sp, #32
     stp             x0, x30, [sp]
     stp             x1, x2, [sp, #16]
-    joy_check       JOY0_LEFT
-    cbz             w26, .right    
-    actor           mustache_man
-    actor_subx      4, 2  
-    actor_anim      mustache_man_walk_left
-    p1_clrf         F_PLAYER_RIGHT
-    p1_setf         F_PLAYER_LEFT
-    b               .update
-.right:    
-    joy_check       JOY0_RIGHT
-    cbz             w26, .up
-    actor           mustache_man
-    actor_addx      4, SCREEN_WIDTH - SPRITE_WIDTH
-    actor_anim      mustache_man_walk_right
-    p1_clrf         F_PLAYER_LEFT
-    p1_setf         F_PLAYER_RIGHT
-    b               .update
-.up:
-    joy_check       JOY0_UP
-    cbz             w26, .down
-    actor           mustache_man
-    actor_suby      4, 128
-    actor_anim      mustache_man_walk_up
-    b               .update
-.down:
-    joy_check       JOY0_DOWN
-    cbz             w26, .check_chop
-    actor           mustache_man
-    actor_addy      4, 400
-    actor_anim      mustache_man_walk_down
-    b               .update
-.check_chop:
-    p1_ldf          w1
-    tst             w1, F_PLAYER_CHOP
-    b.ne            .select
-.chop_right:
-    button_toggle   JOY0_A, button_a_toggle
-    ploadb          x1, w1, button_a_toggle
-    cmp             w1, BUTTON_TOGGLE_STOP
-    b.ne            .chop_left
-    actor           mustache_man
-    actor_anim      mustache_man_chop_right, p1_chop_cb
-    p1_clrf         F_PLAYER_LEFT
-    p1_setf         F_PLAYER_RIGHT or F_PLAYER_CHOP
-    b               .update
-.chop_left:
-    button_toggle   JOY0_Y, button_y_toggle
-    ploadb          x1, w1, button_y_toggle
-    cmp             w1, BUTTON_TOGGLE_STOP
-    b.ne            .select
-    actor           mustache_man
-    actor_anim      mustache_man_chop_left, p1_chop_cb
-    p1_clrf         F_PLAYER_RIGHT
-    p1_setf         F_PLAYER_LEFT or F_PLAYER_CHOP
-    b               .update
-.select:    
     joy_check       JOY0_SELECT
-    cbz             w26, .stand
+    cbz             w26, .update
     state_go        ATTRACT_STATE_ID
-    b               .exit
-.stand:
-    actor           mustache_man
-    p1_ldf          w1
-    tst             w1, F_PLAYER_RIGHT
-    b.ne            .stand_right
-    actor_anim      mustache_man_stand_left
-    b               .update
-.stand_right:
-    actor_anim      mustache_man_stand_right
+    b               .done
 .update:    
     actor_update
-.exit:    
+.done:    
     ldp             x0, x30, [sp]
     ldp             x1, x2, [sp, #16]
     add             sp, sp, #32
@@ -1756,7 +2000,6 @@ state_callbacks:
 
 align 4
 actors:
-    actordef bird1,        0,  1, 0, 0, F_ACTOR_NONE
     actordef bear1,        1,  4, 0, 0, F_ACTOR_NONE
     actordef swarm,        5,  1, 0, 0, F_ACTOR_NONE
     actordef whistle,      6,  3, 0, 0, F_ACTOR_NONE
@@ -1774,7 +2017,11 @@ actors:
     actordef tree7,        50, 4, 0, 0, F_ACTOR_NONE
     actordef tree8,        54, 4, 0, 0, F_ACTOR_NONE
     actordef tree9,        58, 4, 0, 0, F_ACTOR_NONE
+    actordef bird1,        70, 1, 0, 0, F_ACTOR_NONE
     actordef end_of_list,  0,  0, 0, 0, F_ACTOR_END
+
+align 4
+current_tree:   dw  tree0
 
 animdef mustache_man_stand_left, 1, 0
 framestart 0, 2
@@ -1970,6 +2217,61 @@ framestart 7, 3
     frametile 3,  0, -64, PAL1, F_SPR_NONE
     frametile 4,  0, -32, PAL1, F_SPR_NONE
     frametile 5,  0,   0, PAL1, F_SPR_NONE
+frameend
+
+animdef bird_hint, 7, 250
+framestart 0, 1
+    frametile 179, 0, 0, PAL1, F_SPR_NONE
+frameend
+framestart 1, 1
+    frametile 180, 0, 0, PAL1, F_SPR_NONE
+frameend
+framestart 2, 1
+    frametile 181, 0, 0, PAL1, F_SPR_NONE
+frameend
+framestart 3, 1
+    frametile 181, 0, 0, PAL1, F_SPR_HFLIP
+frameend
+framestart 4, 1
+    frametile 181, 0, 0, PAL1, F_SPR_NONE
+frameend
+framestart 5, 1
+    frametile 181, 0, 0, PAL1, F_SPR_HFLIP
+frameend
+framestart 6, 1
+    frametile 181, 0, 0, PAL1, F_SPR_NONE
+frameend
+
+animdef bird_right, 2, 100
+framestart 0, 1
+    frametile 182, 0, 0, PAL1, F_SPR_NONE
+frameend
+framestart 1, 1
+    frametile 183, 0, 0, PAL1, F_SPR_NONE
+frameend
+
+animdef bird_left, 2, 100
+framestart 0, 1
+    frametile 182, 0, 0, PAL1, F_SPR_HFLIP
+frameend
+framestart 1, 1
+    frametile 183, 0, 0, PAL1, F_SPR_HFLIP
+frameend
+
+animdef bird_down, 2, 100
+framestart 0, 1
+    frametile 184, 0, 0, PAL1, F_SPR_NONE
+frameend
+framestart 1, 1
+    frametile 185, 0, 0, PAL1, F_SPR_NONE
+frameend
+
+animdef bird_up, 2, 100
+framestart 0, 1
+    frametile 186, 0, 0, PAL1, F_SPR_NONE
+frameend
+framestart 1, 1
+    frametile 187, 0, 0, PAL1, F_SPR_NONE
 frameend
 
 playerdef player1
