@@ -110,6 +110,7 @@ kernel_core:
     cbz         w1, .no_game
     bl          joy_read
     blr         x1
+    bl          watches_draw
     b           .skip
 
 .no_game:    
@@ -118,7 +119,6 @@ kernel_core:
     bl          caret_draw
     
 .skip:    
-    bl          watches_draw
     bl          page_swap
     b           .loop
 

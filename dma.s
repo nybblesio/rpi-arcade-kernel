@@ -41,7 +41,7 @@ DMA_CON_NEXT   = 20
 ; Macros
 ;
 ; =========================================================
-macro dmadef name*, flags*, len*, stride* {
+macro linear_dmadef name*, flags*, len {
 align 32
 common
 label name
@@ -49,8 +49,10 @@ label name
     dw  0
     dw  0
     dw  len
-    dw  stride
     dw  0
+    dw  0       ; next cb
+    dw  0       ; reserved
+    dw  0       ; reserved
 }
 
 ; =========================================================
@@ -66,7 +68,7 @@ label name
 ; =========================================================
 dma_init:
     pload       x0, w0, dma_enable_base
-    mov         w1, DMA_EN0 or DMA_EN1 or DMA_EN2 or DMA_EN3
+    mov         w1, DMA_EN0
     str         w1, [x0]
     ret
 
@@ -90,8 +92,8 @@ dma_start:
     ldp         x0, x1, [sp, #48]
     mov         w2, BUS_ADDRESSES_l2CACHE_DISABLED
     add         w0, w0, w2
-    mov         w2, DMA_ENABLE
-    str         w0, [x1]
+    str         w0, [x1, DMA_CONBLK_AD]
+    mov         w2, DMA_ACTIVE
     str         w2, [x1, DMA_CS]
     ldp         x0, x30, [sp]
     ldp         x1, x2, [sp, #16]
@@ -101,8 +103,8 @@ dma_start:
 
 macro dma_start con_blk_addr, dma_base_addr {
     sub         sp, sp, #16
-    mov         x25, con_blk_addr
-    mov         x26, dma_base_addr
+    adr         x25, con_blk_addr
+    mov         w26, dma_base_addr
     stp         x25, x26, [sp]
     bl          dma_start
 }
@@ -135,8 +137,8 @@ dma_wait:
 
 macro dma_wait dma_base_addr {
     sub         sp, sp, #16
-    mov         x25, dma_base_addr
-    mov         x26, 0
+    mov         w25, dma_base_addr
+    mov         w26, 0
     stp         x25, x26, [sp]
     bl          dma_wait
 }

@@ -225,8 +225,7 @@ watches_draw:
     mov         w2, 32
 .loop:
     ldrb        w3, [x1, WATCH_FLAGS]
-    tst         w3, F_WATCH_ENABLED
-    b.eq        .skip
+    cbz         w3, .skip
     ldrh        w3, [x1, WATCH_Y_POS]
     ldrh        w4, [x1, WATCH_X_POS]
     ldrb        w5, [x1, WATCH_LEN]

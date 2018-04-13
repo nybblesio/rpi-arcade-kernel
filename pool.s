@@ -34,19 +34,19 @@ aux_base:
     dw  PERIPHERAL_BASE + AUX_BASE
 
 dma_enable_base:
-    dw  PERIPHERAL_BASE + DMA_ENABLE
+    dw  PERIPHERAL_BASE or DMA_ENABLE
 
 dma0_base:
-    dw  PERIPHERAL_BASE + DMA0_BASE
+    dw  PERIPHERAL_BASE or DMA0_BASE
 
 dma1_base:
-    dw  PERIPHERAL_BASE + DMA1_BASE
+    dw  PERIPHERAL_BASE or DMA1_BASE
 
 dma2_base:
-    dw  PERIPHERAL_BASE + DMA2_BASE
+    dw  PERIPHERAL_BASE or DMA2_BASE
 
 dma3_base:
-    dw  PERIPHERAL_BASE + DMA3_BASE
+    dw  PERIPHERAL_BASE or DMA3_BASE
 
 gpio_base:  
     dw  PERIPHERAL_BASE + GPIO_BASE

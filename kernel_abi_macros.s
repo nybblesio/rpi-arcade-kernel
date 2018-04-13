@@ -32,37 +32,39 @@ macro joy_check offset {
 }
 
 macro watch_set idx, ypos, xpos, reg, [params] {
-    local       .start, .end, .value, .skip
+    common
+    local       .start, .value, .end, .skip
     b           .skip
-    align 4
 .start:
     strlist     params
     db          '$'
 .value:
-    db          9 dup(CHAR_SPACE)
+    db          9 dup('0')
 .end:
     align 4
 .skip:    
     mov         x26, KERNEL_ABI_BOTTOM
+    add         w26, w26, WATCHES_BASE
     mov         w27, WATCH_SZ
     mov         w28, idx
-    madd        w26, w28, w27, w26
+    madd        w26, w27, w28, w26
     mov         w27, F_WATCH_ENABLED
     strb        w27, [x26, WATCH_FLAGS]
     mov         w27, ypos
     strh        w27, [x26, WATCH_Y_POS]
     mov         w27, xpos
     strh        w27, [x26, WATCH_X_POS]
-    adr         x27, .value
-    str_hex32   reg, w27
     mov         w27, .end - .start
     strb        w27, [x26, WATCH_LEN]
     adr         x27, .start
     str         w27, [x26, WATCH_STR]
+    adr         x27, .value
+    str_hex32   reg, w27
 }
 
 macro watch_clr idx {
     mov         x26, KERNEL_ABI_BOTTOM
+    add         w26, w26, WATCHES_BASE
     mov         w27, WATCH_SZ
     mov         w28, idx
     madd        w26, w28, w27, w26

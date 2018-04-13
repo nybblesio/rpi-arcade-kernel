@@ -407,6 +407,7 @@ align 4
 
 include     'util.s'
 include     'pool.s'
+include     'dma.s'
 include     'string.s'
 include     'kernel_abi_macros.s'
 
@@ -1211,13 +1212,13 @@ game_enter_cb:
     actor_flags     F_ACTOR_VISIBLE
 
     actor           foreman
-    actor_pos       107, 240
+    actor_pos       110, 240
     actor_anim      foreman_watching
     actor_flags     F_ACTOR_VISIBLE
 
     rand            220, 400
     mov             w0, w26
-    watch_set       0, 400, 32, w0, "rand (w0) = "
+    watch_set       0, 470, 16, w0, "rand (w0) = "
 
     actor           tree0
     actor_pos       256, 256
@@ -1546,6 +1547,7 @@ macro on_update {
 on_load:
     sub         sp, sp, #16
     stp         x0, x30, [sp]
+    watch_clr   0
     fg_reset   
     ldp         x0, x30, [sp]
     add         sp, sp, #16
@@ -1637,23 +1639,28 @@ on_stop:
 ;
 ; =========================================================
 on_tick:
-    sub         sp, sp, #32
+    sub         sp, sp, #48
     stp         x0, x30, [sp]
     stp         x1, x2, [sp, #16]
+    stp         x3, x4, [sp, #32]
 
     on_update
     bg_update
 
-    ; XXX: this is temporary to test everything
-    ;      -and- then we'll introduce dma to break it ;-)
+    adr         x2, bg_buffer_dma
     adr         x1, bg_buffer
-    mem_copy64  w1, w0, SCREEN_BYTES / 8
-    
-    fg_update   w0
+    str         w1, [x2, DMA_CON_SRC]
+    str         w0, [x2, DMA_CON_DEST]
+    pload       x1, w1, dma0_base
+    dma_start   bg_buffer_dma, w1
+    ;dma_wait    w1
 
+    fg_update   w0
+    
     ldp         x0, x30, [sp]
     ldp         x1, x2, [sp, #16]
-    add         sp, sp, #32
+    ldp         x3, x4, [sp, #32]
+    add         sp, sp, #48
     ret
 
 ; =========================================================
@@ -1895,6 +1902,10 @@ frameend
 
 playerdef player1
 playerdef player2
+
+linear_dmadef bg_buffer_dma, \
+        DMA_DEST_WIDTH + DMA_DEST_INC + DMA_SRC_WIDTH + DMA_SRC_INC, \
+        SCREEN_WIDTH * SCREEN_HEIGHT
 
 ; =========================================================
 ;

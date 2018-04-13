@@ -115,11 +115,6 @@ fps_count:  dw  0
 
 timerdef    timer_fps, 2, 1000, video_fps_callback
 
-dmadef      clear_page, \
-            DMA_TDMODE + DMA_DEST_INC + DMA_DEST_WIDTH + DMA_SRC_INC + DMA_SRC_WIDTH, \
-            SCREEN_WIDTH + ((SCREEN_HEIGHT - 1) * 65536), \
-            65536
-
 align 4
 
 ; =========================================================
@@ -216,23 +211,60 @@ page_swap:
 ; page_clear
 ;
 ; stack:
-;   x0, x30 saved
+;   (none)
 ;
 ; registers:
-;   w1, w2 scratch registers
+;   (none)
 ;
 ; =========================================================
 page_clear:
-    sub         sp, sp, #16
+    sub         sp, sp, #48
     stp         x0, x30, [sp]
+    stp         x1, x2, [sp, #16]
+    stp         x3, x4, [sp, #32]
     mov         w1, 0
-    mov         w2, (SCREEN_HEIGHT * SCREEN_WIDTH) / 8
+    mov         w2, 0
+    mov         w3, 480
 .pixel:
-    str         x1, [x0], 8
-    subs        w2, w2, 1
+    stp         x1, x2, [x0], 16
+    stp         x1, x2, [x0], 16
+    stp         x1, x2, [x0], 16
+    stp         x1, x2, [x0], 16
+    stp         x1, x2, [x0], 16
+    stp         x1, x2, [x0], 16
+    stp         x1, x2, [x0], 16
+    stp         x1, x2, [x0], 16
+    stp         x1, x2, [x0], 16
+    stp         x1, x2, [x0], 16
+    stp         x1, x2, [x0], 16
+    stp         x1, x2, [x0], 16
+    stp         x1, x2, [x0], 16
+    stp         x1, x2, [x0], 16
+    stp         x1, x2, [x0], 16
+    stp         x1, x2, [x0], 16
+    stp         x1, x2, [x0], 16
+    stp         x1, x2, [x0], 16
+    stp         x1, x2, [x0], 16
+    stp         x1, x2, [x0], 16
+    stp         x1, x2, [x0], 16
+    stp         x1, x2, [x0], 16
+    stp         x1, x2, [x0], 16
+    stp         x1, x2, [x0], 16
+    stp         x1, x2, [x0], 16
+    stp         x1, x2, [x0], 16
+    stp         x1, x2, [x0], 16
+    stp         x1, x2, [x0], 16
+    stp         x1, x2, [x0], 16
+    stp         x1, x2, [x0], 16
+    stp         x1, x2, [x0], 16
+    stp         x1, x2, [x0], 16
+    stp         x1, x2, [x0], 16
+    subs        w3, w3, 1
     b.ne        .pixel
     ldp         x0, x30, [sp]
-    add         sp, sp, #16
+    ldp         x1, x2, [sp, #16]
+    ldp         x3, x4, [sp, #32]
+    add         sp, sp, #48
     ret
 
 ; =========================================================
