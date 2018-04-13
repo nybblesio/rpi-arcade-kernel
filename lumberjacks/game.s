@@ -740,6 +740,126 @@ macro actor_update {
 
 ; =========================================================
 ;
+; bg_dec
+;
+; stack:
+;   ypos
+;   xpos
+;   pal
+;   value
+;   
+; registers:
+;   (none)
+;
+; =========================================================
+bg_dec:
+    sub             sp, sp, #64
+    stp             x0, x30, [sp]
+    stp             x1, x2, [sp, #16]
+    stp             x3, x4, [sp, #32]
+    stp             x5, x6, [sp, #48]
+    ldp             x0, x1, [sp, #64]
+    ldp             x2, x3, [sp, #80]
+    mov             w6, 32
+    madd            w6, w6, w0, w1
+    mov             w7, BG_CON_SZ
+    mul             w7, w7, w6
+    adr             x6, background_control
+    add             w6, w6, w7
+    mov             w4, 10
+    mov             w0, F_BG_CHANGED
+.loop:
+    mov             w5, 0
+    cmp             w3, 10
+    b.lo            .digit
+    udiv            w5, w3, w4
+    add             w7, w5, w4
+    sub             w3, w3, w7
+.digit:    
+    add             w3, w3, 48
+    strh            w3, [x6, BG_TILE]
+    strb            w2, [x6, BG_PAL]
+    strb            w0, [x6, BG_FLAGS]
+    sub             w6, w6, 1
+    cbnz            w5, .loop
+.done:    
+    ldp             x0, x30, [sp]
+    ldp             x1, x2, [sp, #16]
+    ldp             x3, x4, [sp, #32]
+    ldp             x5, x6, [sp, #48]
+    add             sp, sp, #96
+    ret
+
+macro bg_dec ypos, xpos, pal, value {
+    sub             sp, sp, #32
+    mov             w26, ypos
+    mov             w27, xpos
+    stp             x26, x27, [sp]
+    mov             w26, pal
+    mov             w27, value
+    stp             x26, x27, [sp, #16]
+    bl              bg_dec
+}
+
+; =========================================================
+;
+; bg_draw
+;
+; stack:
+;   ypos
+;   xpos
+;   tile
+;   pal
+;   flags
+;   pad
+;
+; registers:
+;   (none)
+;
+; =========================================================
+bg_draw:
+    sub         sp, sp, #80
+    stp         x0, x30, [sp]
+    stp         x1, x2, [sp, #16]
+    stp         x3, x4, [sp, #32]
+    stp         x5, x6, [sp, #48]
+    stp         x7, x8, [sp, #64]
+    ldp         x0, x1, [sp, #80]
+    ldp         x2, x3, [sp, #96]
+    ldp         x4, x5, [sp, #112]
+    mov         w6, 32
+    madd        w6, w6, w0, w1
+    mov         w7, BG_CON_SZ
+    mul         w7, w7, w6
+    adr         x6, background_control
+    add         w6, w6, w7
+    strh        w2, [x6, BG_TILE]
+    strb        w3, [x6, BG_PAL]
+    strb        w4, [x6, BG_FLAGS]
+    ldp         x0, x30, [sp]
+    ldp         x1, x2, [sp, #16]
+    ldp         x3, x4, [sp, #32]
+    ldp         x5, x6, [sp, #48]
+    ldp         x7, x8, [sp, #64]
+    add         sp, sp, #128
+    ret
+
+macro bg_draw ypos, xpos, tile, pal, flags {
+    sub         sp, sp, #48
+    mov         w26, ypos
+    mov         w27, xpos
+    stp         x26, x27, [sp]
+    mov         w26, tile
+    mov         w27, pal
+    stp         x26, x27, [sp, #16]
+    mov         w26, flags
+    mov         w27, 0
+    stp         x26, x27, [sp, #32]
+    bl          bg_draw
+}
+
+; =========================================================
+;
 ; bg_set
 ;
 ; stack:
@@ -1436,7 +1556,17 @@ game_enter_cb:
     pstore          x2, w1, current_tree
 
     tree_spawn
-    tree_spawn
+
+    bg_dec          1, 7, PAL4, 0
+
+    bg_draw         2, 6, 16, PAL3, F_BG_CHANGED
+    bg_draw         2, 7, 16, PAL3, F_BG_CHANGED
+
+    ploadb          x1, w1, trees_left
+    bg_dec          4, 6, PAL3, w1
+
+    bg_dec          6, 12, PAL3, 0
+    bg_dec          6, 20, PAL3, 0
 
     ldp             x0, x30, [sp]
     ldp             x1, x2, [sp, #16]
@@ -1591,7 +1721,7 @@ bird_update_cb:
     b               .exit
 .move_up:
     actor           bird1
-    actor_suby      3, 200
+    actor_suby      3, 150
     b               .exit
 .move_down:
     actor           bird1
@@ -1972,6 +2102,9 @@ on_tick:
 ; Variables Data Section
 ;
 ; =========================================================
+
+trees_left:   db 5
+seconds_left: db 45
 
 button_a_toggle: db 0
 button_y_toggle: db 0
