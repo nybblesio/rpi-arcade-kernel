@@ -224,33 +224,8 @@ page_clear:
     stp         x3, x4, [sp, #32]
     mov         w1, 0
     mov         w2, 0
-    mov         w3, 480
+    mov         w3, (SCREEN_HEIGHT * SCREEN_WIDTH) / 128
 .pixel:
-    stp         x1, x2, [x0], 16
-    stp         x1, x2, [x0], 16
-    stp         x1, x2, [x0], 16
-    stp         x1, x2, [x0], 16
-    stp         x1, x2, [x0], 16
-    stp         x1, x2, [x0], 16
-    stp         x1, x2, [x0], 16
-    stp         x1, x2, [x0], 16
-    stp         x1, x2, [x0], 16
-    stp         x1, x2, [x0], 16
-    stp         x1, x2, [x0], 16
-    stp         x1, x2, [x0], 16
-    stp         x1, x2, [x0], 16
-    stp         x1, x2, [x0], 16
-    stp         x1, x2, [x0], 16
-    stp         x1, x2, [x0], 16
-    stp         x1, x2, [x0], 16
-    stp         x1, x2, [x0], 16
-    stp         x1, x2, [x0], 16
-    stp         x1, x2, [x0], 16
-    stp         x1, x2, [x0], 16
-    stp         x1, x2, [x0], 16
-    stp         x1, x2, [x0], 16
-    stp         x1, x2, [x0], 16
-    stp         x1, x2, [x0], 16
     stp         x1, x2, [x0], 16
     stp         x1, x2, [x0], 16
     stp         x1, x2, [x0], 16

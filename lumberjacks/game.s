@@ -34,6 +34,8 @@ format      binary as 'img'
 ; Constants Section
 ;
 ; =========================================================
+RAND_MAX = 32767
+
 BUTTON_TOGGLE_READY = 0
 BUTTON_TOGGLE_START = 1
 BUTTON_TOGGLE_STOP  = 2
@@ -410,6 +412,63 @@ include     'pool.s'
 include     'dma.s'
 include     'string.s'
 include     'kernel_abi_macros.s'
+
+; =========================================================
+;
+; rand
+;
+; stack:
+;   lower limit
+;   upper limit
+;
+; registers:
+;   (none)
+;
+; =========================================================
+; return min + rand() / (RAND_MAX / (max - min + 1) + 1);
+rand:
+    sub         sp, sp, #64
+    stp         x0, x30, [sp]
+    stp         x1, x2, [sp, #16]
+    stp         x3, x4, [sp, #32]
+    stp         x5, x6, [sp, #48]
+
+    pload       x0, w0, prng_seed
+    pload       x1, w1, prng_constant1
+    pload       x2, w2, prng_constant2
+    madd        w0, w0, w1, w2
+    pstore      x1, w0, prng_seed
+    ;watch_set   0, 470, 16, w0, "prng_seed (w0) = "
+    and         w0, w0, RAND_MAX
+    ;watch_set   1, 460, 16, w0, "prng_seed % 32767 (w0) = "
+
+    ldp         x1, x2, [sp, #64]
+    sub         w4, w2, w1
+    add         w4, w4, 1
+    mov         w5, RAND_MAX
+    udiv        w5, w5, w4
+    add         w5, w5, 1
+    ;watch_set   2, 450, 16, w5, "(32767 / (max - min + 1) + 1) (w5) = "
+
+    udiv        w6, w0, w5
+    add         w6, w6, w1
+    ;watch_set   3, 440, 16, w6, "(prng_clamped_seed / w5) + min (w6) = "
+    mov         w26, w6
+
+    ldp         x0, x30, [sp]
+    ldp         x1, x2, [sp, #16]
+    ldp         x3, x4, [sp, #32]
+    ldp         x5, x6, [sp, #48]
+    add         sp, sp, #80
+    ret
+
+macro rand lower_limit*, upper_limit* {
+    sub         sp, sp, #16
+    mov         w26, lower_limit
+    mov         w27, upper_limit
+    stp         x26, x27, [sp]
+    bl          rand
+}
 
 ; =========================================================
 ;
@@ -1217,11 +1276,12 @@ game_enter_cb:
     actor_flags     F_ACTOR_VISIBLE
 
     rand            220, 400
-    mov             w0, w26
-    watch_set       0, 470, 16, w0, "rand (w0) = "
+    mov             w1, w26
+    rand            64, 448
+    mov             w2, w26
 
     actor           tree0
-    actor_pos       256, 256
+    actor_pos       w1, w2
     actor_anim      tree_grow, tree_grow_cb
     actor_flags     F_ACTOR_VISIBLE
 
@@ -1668,12 +1728,24 @@ on_tick:
 ; Variables Data Section
 ;
 ; =========================================================
+
 button_a_toggle: db 0
 button_y_toggle: db 0
 
 previous_state: db  NONE_STATE_ID
 current_state:  db  NONE_STATE_ID
 next_state:     db  NONE_STATE_ID
+
+align 4
+
+prng_constant1:
+    dw  8253729
+
+prng_constant2:
+    dw  2396403
+
+prng_seed:
+    dw  5323
 
 align 4
 state_callbacks:

@@ -39,7 +39,7 @@ macro watch_set idx, ypos, xpos, reg, [params] {
     strlist     params
     db          '$'
 .value:
-    db          9 dup('0')
+    db          8 dup('0')
 .end:
     align 4
 .skip:    
