@@ -1521,6 +1521,158 @@ macro tree_spawn {
 
 ; =========================================================
 ;
+; p1_update_lives
+;
+; stack:
+;   (none)
+;   
+; registers:
+;   (none)
+;
+; =========================================================
+p1_update_lives:
+    sub             sp, sp, 32
+    stp             x0, x30, [sp]
+    stp             x1, x2, [sp, #16]
+    mov             w1, 7
+.reset:
+    bg_draw         2, w1, 0, PAL1, F_BG_CHANGED
+    subs            w1, w1, 1
+    b.ne            .reset
+    adr             x0, player1
+    ldrh            w1, [x0, PLAYER_LIVES]
+    cbz             w1, .done
+    mov             w2, 7
+.loop:
+    bg_draw         2, w2, 64, PAL1, F_BG_CHANGED
+    sub             w2, w2, 1
+    subs            w1, w1, 1
+    b.ne            .loop
+.done:    
+    ldp             x0, x30, [sp]
+    ldp             x1, x2, [sp, #16]
+    add             sp, sp, 32
+    ret
+
+; =========================================================
+;
+; p1_update_score
+;
+; stack:
+;   (none)
+;   
+; registers:
+;   (none)
+;
+; =========================================================
+p1_update_score:
+    sub             sp, sp, 32
+    stp             x0, x30, [sp]
+    stp             x1, x2, [sp, #16]
+    adr             x0, player1
+    ldr             w1, [x0, PLAYER_SCORE]
+    bg_dec          1, 7, PAL4, w1
+    ldp             x0, x30, [sp]
+    ldp             x1, x2, [sp, #16]
+    add             sp, sp, 32
+    ret
+
+; =========================================================
+;
+; p1_update_trees
+;
+; stack:
+;   (none)
+;   
+; registers:
+;   (none)
+;
+; =========================================================
+p1_update_trees:
+    sub             sp, sp, 32
+    stp             x0, x30, [sp]
+    stp             x1, x2, [sp, #16]
+    adr             x0, player1
+    ldrh            w1, [x0, PLAYER_TREES]
+    bg_dec          6, 12, PAL3, w1
+    ldp             x0, x30, [sp]
+    ldp             x1, x2, [sp, #16]
+    add             sp, sp, 32
+    ret
+
+; =========================================================
+;
+; p2_update_trees
+;
+; stack:
+;   (none)
+;   
+; registers:
+;   (none)
+;
+; =========================================================
+p2_update_trees:
+    sub             sp, sp, 32
+    stp             x0, x30, [sp]
+    stp             x1, x2, [sp, #16]
+    adr             x0, player2
+    ldrh            w1, [x0, PLAYER_TREES]
+    bg_dec          6, 20, PAL3, w1
+    ldp             x0, x30, [sp]
+    ldp             x1, x2, [sp, #16]
+    add             sp, sp, 32
+    ret
+
+; =========================================================
+;
+; update_trees_left
+;
+; stack:
+;   (none)
+;   
+; registers:
+;   (none)
+;
+; =========================================================
+update_trees_left:
+    sub             sp, sp, 32
+    stp             x0, x30, [sp]
+    stp             x1, x2, [sp, #16]
+    ploadb          x1, w1, trees_left
+    bg_dec          4, 6, PAL3, w1
+    ldp             x0, x30, [sp]
+    ldp             x1, x2, [sp, #16]
+    add             sp, sp, 32
+    ret
+
+; =========================================================
+;
+; update_time_left
+;
+; stack:
+;   (none)
+;   
+; registers:
+;   (none)
+;
+; =========================================================
+update_time_left:
+    sub             sp, sp, #32
+    stp             x0, x30, [sp]
+    stp             x1, x2, [sp, #16]
+    bg_draw         4, 24, 48, PAL3, F_BG_CHANGED
+    bg_draw         4, 25, 48, PAL3, F_BG_CHANGED
+    bg_draw         4, 27, 48, PAL3, F_BG_CHANGED
+    bg_draw         4, 28, 48, PAL3, F_BG_CHANGED
+    ploadb          x1, w1, seconds_left
+    bg_dec          4, 28, PAL3, w1
+    ldp             x0, x30, [sp]
+    ldp             x1, x2, [sp, #16]
+    add             sp, sp, #32
+    ret
+
+; =========================================================
+;
 ; game_enter_cb
 ;
 ; stack:
@@ -1556,17 +1708,12 @@ game_enter_cb:
     pstore          x2, w1, current_tree
 
     tree_spawn
-
-    bg_dec          1, 7, PAL4, 0
-
-    bg_draw         2, 6, 16, PAL3, F_BG_CHANGED
-    bg_draw         2, 7, 16, PAL3, F_BG_CHANGED
-
-    ploadb          x1, w1, trees_left
-    bg_dec          4, 6, PAL3, w1
-
-    bg_dec          6, 12, PAL3, 0
-    bg_dec          6, 20, PAL3, 0
+    bl              p1_update_lives
+    bl              p1_update_trees
+    bl              p2_update_trees
+    bl              p1_update_score
+    bl              update_trees_left
+    bl              update_time_left
 
     ldp             x0, x30, [sp]
     ldp             x1, x2, [sp, #16]
@@ -2104,7 +2251,7 @@ on_tick:
 ; =========================================================
 
 trees_left:   db 5
-seconds_left: db 45
+seconds_left: db 9
 
 button_a_toggle: db 0
 button_y_toggle: db 0
