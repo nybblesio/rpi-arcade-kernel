@@ -152,6 +152,16 @@ F_BIRD_RIGHT    = 00000010b
 F_BIRD_UP       = 00000100b
 F_BIRD_DOWN     = 00001000b
 
+F_BEAR_NONE     = 00000000b
+F_BEAR_LEFT     = 00000001b
+F_BEAR_RIGHT    = 00000010b
+F_BEAR_THROW    = 00000100b
+
+F_BEEHIVE_NONE  = 00000000b
+F_BEEHIVE_LEFT  = 00000001b
+F_BEEHIVE_RIGHT = 00000010b
+F_BEEHIVE_SWARM = 00000100b
+
 ; =========================================================
 ;
 ; Game Entry Point
@@ -300,6 +310,16 @@ macro actor_pos ypos, xpos {
     strh            w27, [x25, ACTOR_X_POS]
 }
 
+macro actor_posx xpos {
+    mov             w26, xpos
+    strh            w26, [x25, ACTOR_X_POS]
+}
+
+macro actor_posy ypos {
+    mov             w26, ypos
+    strh            w26, [x25, ACTOR_Y_POS]
+}
+
 macro actor_animt anim_reg, actor_reg {
     mov             w28, 1600
     ldrh            w27, [anim_reg, ANIM_DEF_NUM_MS]
@@ -335,17 +355,21 @@ macro actor_stuser1 reg {
 }
 
 macro actor_addx pixels, upper_bound {
-    local           .clamp
+    local           .clamp, .exit
     ldrh            w26, [x25, ACTOR_X_POS]
     add             w26, w26, pixels
     cmp             w26, upper_bound
     b.hs            .clamp
     strh            w26, [x25, ACTOR_X_POS]
+    mov             w26, 0
+    b               .exit
 .clamp:    
+    mov             w26, 1
+.exit:
 }
 
 macro actor_subx pixels, lower_bound {
-    local           .clamp, .ok
+    local           .clamp, .ok, .exit
     ldrh            w26, [x25, ACTOR_X_POS]
     cbz             w26, .clamp
     mov             w27, pixels
@@ -357,21 +381,29 @@ macro actor_subx pixels, lower_bound {
     cmp             w26, lower_bound
     b.ls            .clamp
     strh            w26, [x25, ACTOR_X_POS]
-.clamp:    
+    mov             w26, 0
+    b               .exit
+.clamp:
+    mov             w26, 1
+.exit:
 }
 
 macro actor_addy pixels, upper_bound {
-    local           .clamp
+    local           .clamp, .exit
     ldrh            w26, [x25, ACTOR_Y_POS]
     add             w26, w26, pixels
     cmp             w26, upper_bound
     b.hs            .clamp
     strh            w26, [x25, ACTOR_Y_POS]
+    mov             w26, 0
+    b               .exit
 .clamp:    
+    mov             w26, 1
+.exit:
 }
 
 macro actor_suby pixels, lower_bound {
-    local           .clamp, .ok
+    local           .clamp, .ok, .exit
     ldrh            w26, [x25, ACTOR_Y_POS]
     cbz             w26, .clamp
     mov             w27, pixels
@@ -383,7 +415,11 @@ macro actor_suby pixels, lower_bound {
     cmp             w26, lower_bound
     b.ls            .clamp
     strh            w26, [x25, ACTOR_Y_POS]
+    mov             w26, 0
+    b               .exit
 .clamp:    
+    mov             w26, 1
+.exit:
 }
 
 macro spr number {
@@ -589,7 +625,14 @@ actor_reset:
     str         w1, [x0, ACTOR_ANIM]
     str         w1, [x0, ACTOR_ANIM_TIMER]
     str         w1, [x0, ACTOR_ANIM_FUNC]
+    str         w1, [x0, ACTOR_UPD_FUNC]
+    str         w1, [x0, ACTOR_UPD_TIMER]
+    str         w1, [x0, ACTOR_UPD_MS]
     strb        w1, [x0, ACTOR_FRAME_IDX]
+    strb        w1, [x0, ACTOR_USER1]
+    strb        w1, [x0, ACTOR_USER2]
+    strb        w1, [x0, ACTOR_USER3]
+    strb        w1, [x0, ACTOR_USER4]
     mov         w1, F_ACTOR_NONE
     strb        w1, [x0, ACTOR_FLAGS]
     add         x0, x0, ACTOR_SZ
@@ -1440,6 +1483,49 @@ bird_hint_cb:
 
 ; =========================================================
 ;
+; bear_spawn
+;
+; stack:
+;   (none)
+;   
+; registers:
+;   (none)
+;
+; =========================================================
+bear_spawn:
+    sub             sp, sp, #32
+    stp             x0, x30, [sp]
+    stp             x1, x2, [sp, #16]
+    actor           bear1
+    rand            10, 4096
+    mov             w0, 00000001b
+    tst             w26, w0
+    b.eq            .done
+    rand            220, 400
+    actor_posy      w26
+    rand            10, 4096
+    tbz             w26, 1, .right
+    actor_posx      5
+    actor_setf      F_BEAR_LEFT
+    actor_anim      bear_walking_right
+    b               .done
+.right:
+    actor_posx      SCREEN_WIDTH - (SPRITE_WIDTH + 5)
+    actor_setf      F_BEAR_RIGHT
+    actor_anim      bear_walking_left
+.done:    
+    actor_flags     F_ACTOR_VISIBLE
+    ldp             x0, x30, [sp]
+    ldp             x1, x2, [sp, #16]
+    add             sp, sp, #32
+    ret
+
+macro bear_spawn {
+    bl              bear_spawn
+}
+
+; =========================================================
+;
 ; tree_grow_cb
 ;
 ; stack:
@@ -1457,10 +1543,8 @@ tree_grow_cb:
     adr             x1, tree_stand
     str             w1, [x0, ACTOR_ANIM]
     rand            10, 4096
-    mov             w1, w26
-    and             w1,   w1, 00000111b
-    rand            10, 4096
-    and             w26, w26, 00000111b
+    and             w1,  w26, 00000111b
+    and             w26, w26, 00111000b
     cmp             w1, w26
     b.ne            .done
 .bird:
@@ -1708,6 +1792,12 @@ game_enter_cb:
     pstore          x2, w1, current_tree
 
     tree_spawn
+    tree_spawn
+    tree_spawn
+    tree_spawn
+    tree_spawn
+    tree_spawn
+    bear_spawn
     bl              p1_update_lives
     bl              p1_update_trees
     bl              p2_update_trees
@@ -1861,18 +1951,25 @@ bird_update_cb:
 .move_right:
     actor           bird1
     actor_addx      3, SCREEN_WIDTH - SPRITE_WIDTH
+    cbz             w26, .exit
+    actor_posx      2
     b               .exit
 .move_left:
     actor           bird1
-    actor_subx      3, SPRITE_WIDTH
+    actor_subx      3, 2
+    cbz             w26, .exit
+    actor_posx      SCREEN_WIDTH - SPRITE_WIDTH
     b               .exit
 .move_up:
     actor           bird1
     actor_suby      3, 150
-    b               .exit
+    cbz             w26, .exit
+    b               .down
 .move_down:
     actor           bird1
     actor_addy      3, SCREEN_HEIGHT - SPRITE_HEIGHT
+    cbz             w26, .exit
+    b               .up
 .exit:    
     ldp             x0, x30, [sp]
     ldp             x1, x2, [sp, #16]
@@ -2234,7 +2331,7 @@ on_tick:
     str         w0, [x2, DMA_CON_DEST]
     pload       x1, w1, dma0_base
     dma_start   bg_buffer_dma, w1
-    ;dma_wait    w1
+    dma_wait    w1
 
     fg_update   w0
     
@@ -2280,7 +2377,7 @@ state_callbacks:
 
 align 4
 actors:
-    actordef bear1,        1,  4, 0, 0, F_ACTOR_NONE
+    actordef bear1,        0,  4, 0, 0, F_ACTOR_NONE
     actordef swarm,        5,  1, 0, 0, F_ACTOR_NONE
     actordef whistle,      6,  3, 0, 0, F_ACTOR_NONE
     actordef beehive,      9,  1, 0, 0, F_ACTOR_NONE
@@ -2443,6 +2540,40 @@ frameend
 framestart 1, 2
     frametile 123, 0,  0, PAL1, F_SPR_NONE
     frametile 125, 0, 32, PAL1, F_SPR_NONE
+frameend
+
+animdef beehive_flying_right, 1, 0
+framestart 0, 1
+    frametile 128, 0, 0, PAL1, F_SPR_NONE
+frameend
+
+animdef beehive_flying_left, 1, 0
+framestart 0, 1
+    frametile 128, 0, 0, PAL1, F_SPR_HFLIP
+frameend
+
+animdef bear_walking_right, 2, 250
+framestart 0, 3
+    frametile 155,  0,  0, PAL1, F_SPR_NONE
+    frametile 156, 32,  0, PAL1, F_SPR_NONE
+    frametile 157,  0, 32, PAL1, F_SPR_NONE
+frameend
+framestart 1, 3
+    frametile 158,  0,  0, PAL1, F_SPR_NONE
+    frametile 159, 28, 10, PAL1, F_SPR_NONE
+    frametile 160, -4, 32, PAL1, F_SPR_NONE
+frameend
+
+animdef bear_walking_left, 2, 250
+framestart 0, 3
+    frametile 155,  0,  0, PAL1, F_SPR_HFLIP
+    frametile 156,-32,  0, PAL1, F_SPR_HFLIP
+    frametile 157,  0, 32, PAL1, F_SPR_HFLIP
+frameend
+framestart 1, 3
+    frametile 158,  0,  0, PAL1, F_SPR_HFLIP
+    frametile 159,-28, 10, PAL1, F_SPR_HFLIP
+    frametile 160,  4, 32, PAL1, F_SPR_HFLIP
 frameend
 
 animdef foreman_watching, 2, 325
